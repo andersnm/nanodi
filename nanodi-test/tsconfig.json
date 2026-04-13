@@ -1,9 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
-    "allowSyntheticDefaultImports": true,
     "types": [ "node" ]
   },
   "include": [

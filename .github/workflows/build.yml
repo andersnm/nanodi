@@ -22,3 +22,9 @@ jobs:
       - run: npm run build
       - run: npm run test:dist
         working-directory: ./nanodi-test
+      - run: npm run pack
+      - uses: actions/upload-artifact@v4
+        if: matrix.node-version == '22.x'
+        with:
+          name: packages
+          path: '*.tgz'
