@@ -1,16 +1,6 @@
+import { Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
+
 const FRIEND = Symbol("friend");
-
-export type RegistrationConstructor<T> = new (...args: any[]) => T;
-export type RegistrationKey<T> = string | Symbol | RegistrationConstructor<T>;
-
-export type Registration =
-  | { useValue: any }
-  | { useSingletonClass: RegistrationConstructor<any> }
-  | { useSingletonFactory: (...args: any[]) => any }
-  | { useScopedClass: RegistrationConstructor<any> }
-  | { useScopedFactory: (...args: any[]) => any }
-  | { useTransientClass: RegistrationConstructor<any> }
-  | { useTransientFactory: () => any };
 
 export class ServiceCollection {
   private frozen: boolean = false;
@@ -37,10 +27,6 @@ export class ServiceCollection {
 interface Resolution {
   key: RegistrationKey<any>;
   registration: Registration;
-}
-
-function isScopedSingleton(registration: Registration): boolean {
-  return "useScopedClass" in registration || "useScopedFactory" in registration;
 }
 
 export class ServiceProvider {
@@ -87,7 +73,7 @@ export class ServiceProvider {
 
     const resolutionTop = this.resolutionStack[this.resolutionStack.length - 1];
 
-    if (isScopedSingleton(registration) && resolutionTop && !isScopedSingleton(resolutionTop.registration)) {
+    if (registration.lifetime === "scoped" && resolutionTop && resolutionTop.registration.lifetime !== "scoped") {
       throw new Error(`Cannot resolve scoped service '${key.toString()}' from a transient or singleton context '${resolutionTop.key.toString()}'`);
     }
 
@@ -103,43 +89,43 @@ export class ServiceProvider {
 
   protected resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration): T {
     let instance;
-    if ("useScopedClass" in registration) {
-      instance = new registration.useScopedClass();
+    if (registration.lifetime === "scoped" && registration.useClass !== undefined) {
+      instance = new registration.useClass();
       this.instances.set(key, instance);
       return instance;
     }
 
-    if ("useScopedFactory" in registration) {
-      instance = registration.useScopedFactory();
+    if (registration.lifetime === "scoped" && registration.useFactory !== undefined) {
+      instance = registration.useFactory();
       this.instances.set(key, instance);
       return instance;
     }
 
-    if ('useTransientClass' in registration) {
-      return new registration.useTransientClass();
+    if (registration.lifetime === "transient" && registration.useClass !== undefined) {
+      return new registration.useClass();
     }
 
-    if ('useTransientFactory' in registration) {
-      return registration.useTransientFactory();
+    if (registration.lifetime === "transient" && registration.useFactory !== undefined) {
+      return registration.useFactory();
     }
 
     if (this.parentProvider) {
       return this.parentProvider.resolveInternal(key);
     } else {
 
-      if ("useValue" in registration) {
+      if (registration.lifetime === "value" && registration.useValue !== undefined) {
         this.instances.set(key, registration.useValue);
         return registration.useValue;
       }
 
-      if ("useSingletonClass" in registration) {
-        instance = new registration.useSingletonClass();
+      if (registration.lifetime === "singleton" && registration.useClass !== undefined) {
+        instance = new registration.useClass();
         this.instances.set(key, instance);
         return instance;
       }
 
-      if ("useSingletonFactory" in registration) {
-        instance = registration.useSingletonFactory();
+      if (registration.lifetime === "singleton" && registration.useFactory !== undefined) {
+        instance = registration.useFactory();
         this.instances.set(key, instance);
         return instance;
       }

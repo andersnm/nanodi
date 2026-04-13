@@ -1,4 +1,4 @@
-import test, { mock } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inject, ServiceCollection } from 'nanodi';
 
@@ -7,8 +7,8 @@ test('Lifetimes: Singletons are shared, Scoped are unique per scope', async (t) 
   
   class Counter { count = Math.random(); }
 
-  services.register('singleton', { useSingletonClass: Counter });
-  services.register('scoped', { useScopedClass: Counter });
+  services.register('singleton', { lifetime: "singleton", useFactory: () => new Counter() });
+  services.register('scoped', { lifetime: "scoped", useClass: Counter });
   
   const root = services.createProvider();
   const scope1 = root.createScope();
@@ -32,8 +32,8 @@ test('Ambient Context: inject() finds the correct scoped instance', async () => 
   }
 
   const services = new ServiceCollection();
-  services.register('id', { useScopedFactory: () => Math.random() });
-  services.register('service', { useScopedClass: Service } );
+  services.register('id', { lifetime: "scoped", useFactory: () => Math.random() });
+  services.register('service', { lifetime: "scoped", useClass: Service } );
   const root = services.createProvider();
 
   async function work() {
@@ -57,8 +57,8 @@ test('Protection: Circular dependencies throw an error', () => {
   class A { constructor() { inject('B'); } }
   class B { constructor() { inject('A'); } }
 
-  services.register('A', { useSingletonClass: A });
-  services.register('B', { useSingletonClass: B });
+  services.register('A', { lifetime: "singleton", useClass: A });
+  services.register('B', { lifetime: "singleton", useClass: B });
 
   const root = services.createProvider();
 
@@ -69,7 +69,7 @@ test('Hierarchy: Scoped provider delegates to parent for singletons', () => {
   const services = new ServiceCollection();
   const val = { version: "1.0" };
   
-  services.register('config', { useValue: val });
+  services.register('config', { lifetime: "value", useValue: val });
   
   const root = services.createProvider();
   const scope = root.createScope();
@@ -81,8 +81,8 @@ test('Hierarchy: Scoped provider delegates to parent for singletons', () => {
 test('Factories: Can use inject() inside factory functions', () => {
   const services = new ServiceCollection();
   
-  services.register('token', { useValue: 'SECRET_123' });
-  services.register('api', { useScopedFactory: () => {
+  services.register('token', { lifetime: "value", useValue: 'SECRET_123' });
+  services.register('api', { lifetime: "scoped", useFactory: () => {
     const t = inject<string>('token');
     return { auth: t };
   }});
@@ -107,7 +107,7 @@ test('Shadowing: Scoped registration creates new instance despite parent existin
   const services = new ServiceCollection();
   class UserContext { id = Math.random(); }
 
-  services.register('ctx', { useScopedClass: UserContext });
+  services.register('ctx', { lifetime: "scoped",useClass: UserContext });
 
   const root = services.createProvider();
   const rootCtx = root.resolve<UserContext>('ctx');
@@ -122,10 +122,12 @@ test('Captive Dependency: Singleton should not be able to inject Scoped via a sh
   const services = new ServiceCollection();
 
   services.register("ScopedService", {
-    useScopedFactory: () => ({ name: 'scoped' })
+    lifetime: "scoped",
+    useFactory: () => ({ name: 'scoped' })
   });
   services.register("SingletonService", { 
-    useSingletonFactory: () => {
+    lifetime: "singleton",
+    useFactory: () => {
       return {
         dependency: inject("ScopedService") 
       };
@@ -133,7 +135,8 @@ test('Captive Dependency: Singleton should not be able to inject Scoped via a sh
   });
 
   services.register("EntryPoint", {
-    useScopedClass: class {
+    lifetime: "singleton",
+    useClass: class {
       s;
       constructor(s = inject("SingletonService")) { this.s = s; }
     }
@@ -156,14 +159,16 @@ test('Factories cache falsy values (0, false, null, etc.) instead of re-invoking
   let scopedFactoryCallCount = 0;
 
   services.register('singletonZero', { 
-    useSingletonFactory: () => {
+    lifetime: "singleton",
+    useFactory: () => {
       singletonFactoryCallCount++;
       return 0;
     }
   });
 
   services.register('scopedFalse', { 
-    useScopedFactory: () => {
+    lifetime: "scoped",
+    useFactory: () => {
       scopedFactoryCallCount++;
       return false;
     }

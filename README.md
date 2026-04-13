@@ -1,6 +1,6 @@
 # nanodi
 
-Modern, simple, immutable, synchronous constructor DI container for Node.js and browsers. No auto-registration nor decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. No auto-registration nor decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
 
 ## Design principles
 - **Synchronous:** Constructors and factories must not perform async work.
@@ -17,8 +17,8 @@ Modern, simple, immutable, synchronous constructor DI container for Node.js and 
 
 ```ts
 const services = new ServiceCollection();
-services.register(Database, { useSingletonClass: PostgresDb });
-services.register(UserService, { useScopedClass: UserService });
+services.register(Database, { lifetime: "singleton", useClass: PostgresDb });
+services.register(UserService, { lifetime: "scoped", useClass: UserService });
 ```
 
 2. Create the root provider:
@@ -59,15 +59,15 @@ app.get('/user', async (req, res) => {
 ```
 
 ## Resolution logic and order
-- If singleton instance exists in the current container, return it, else:
-- If `useScopedClass` is provided, create new singleton in current container, else:
-- If `useScopedFactory` is provided, create new singleton in current container, else:
-- If `useTransientClass` is provided, create new instance, else:
-- If `useTransientFactory` is provided, create new instance, else:
-- If parent container exists, resolve singleton from it, otherwise is root container:
-- If `useValue` is provided, use that, else:
-- If `useSingletonClass` is provided, create singleton, else:
-- If `useSingletonFactory` is provided, create singleton, else
+- If the instance exists in the current container cache, return it, else:
+- If `scoped` and `useClass` is provided, create and cache a new instance in the current container, else:
+- If `scoped` and `useFactory` is provided, create and cache a new instance in the current container, else:
+- If `transient` and `useClass` is provided, create new instance, else:
+- If `transient` and `useFactory` is provided, create new instance, else:
+- If parent container exists, resolve from it, otherwise resolve as the root container:
+- If `useValue` is provided, return it, else:
+- If `singleton` and `useClass` is provided, create and cache a new instance in the root container, else:
+- If `singleton` and `useFactory` is provided, create and cache a new instance in the root container, else
 - Throw error
 
 ## API Reference
@@ -75,7 +75,7 @@ app.get('/user', async (req, res) => {
 ### `ServiceCollection`
 The container used to define your dependencies before the application starts.
 
-* **`register(key, registration)`**: Adds a service to the collection.
+* **`register(key: RegistrationKey<T>, registration: Registration)`**: Adds a service to the collection.
     * `key`: A `string`, `Symbol`, or a `Class`.
     * `registration`: An object defining the lifetime strategy.
     * *Throws:* If called after a provider has been created (frozen).
@@ -86,23 +86,8 @@ The container used to define your dependencies before the application starts.
 ### `ServiceProvider`
 The engine that resolves and caches instances.
 
-* **`resolve<T>(key)`**: Returns the instance associated with the key. If the instance doesn't exist yet, it is created based on its registration strategy.
+* **`resolve<T>(key: RegistrationKey<T>)`**: Returns the instance associated with the key. If the instance doesn't exist yet, it is created based on its registration strategy.
 * **`createScope()`**: Creates a child `ServiceProvider`. This child shares the same service registrations but maintains its own cache for **Scoped** services.
-
----
-
-### `Registration` Strategies
-When registering a service, you must provide exactly one of these properties:
-
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `useValue` | `any` | Returns a constant value. |
-| `useSingletonClass` | `Constructor` | Instantiates a class once in the root provider. |
-| `useSingletonFactory` | `Function` | Calls a function once in the root provider to get the instance. |
-| `useScopedClass` | `Constructor` | Instantiates a class once per scope. |
-| `useScopedFactory` | `Function` | Calls a function once per scope to get the instance. |
-| `useTransientClass` | `Constructor` | Instantiates a new class on every `resolve/inject`. |
-| `useTransientFactory` | `Function` | Calls a function for a new instance on every `resolve/inject`. |
 
 ---
 
@@ -115,10 +100,64 @@ The primary way to retrieve dependencies inside constructors or functions within
 
 ---
 
-### Types
+#### `RegistrationKey<T>` type
 
-* **`RegistrationKey<T>`**: `string | Symbol | new (...args: any[]) => T`
-* **`RegistrationConstructor<T>`**: A class constructor that yields type `T`.
+Defined as `string | Symbol | new (...args: any[]) => T`
+
+
+### `Registration` type
+
+Describes a service type and its lifetime strategy.
+
+| Field | Type | Description |
+|---------|-|------------|
+|`lifetime`| `Lifetime` enum | One of `"value"`, `"singleton"`, `"scoped"`, `"transient"`
+|`useValue`| any | Valid with lifetime: `"value"`
+|`useClass`| Constructor | Valid with lifetime: `"singleton"`, `"scoped"`, `"transient"`
+|`useFactory`| Function | Valid with lifetime: `"singleton"`, `"scoped"`, `"transient"`
+
+
+#### `Lifetime` enum
+
+| Lifetime | Description |
+|---------|-------------|
+| **`"value"`** | Always returns the provided constant. No construction. |
+| **`"singleton"`** | Created once in the **root** provider and reused everywhere. |
+| **`"scoped"`** | Created once **per scope**. Scoped instances never leak upward. |
+| **`"transient"`** | A new instance is created on every `resolve()` or `inject()`. |
 
 ---
 
+### Examples
+
+#### Value
+```ts
+services.register("config", {
+  lifetime: "value",
+  useValue: { port: 3000 }
+});
+```
+
+#### Singleton class
+```ts
+services.register(Database, {
+  lifetime: "singleton",
+  useClass: PostgresDb
+});
+```
+
+#### Scoped factory
+```ts
+services.register(RequestId, {
+  lifetime: "scoped",
+  useFactory: () => crypto.randomUUID()
+});
+```
+
+#### Transient class
+```ts
+services.register(Logger, {
+  lifetime: "transient",
+  useClass: Logger
+});
+```
