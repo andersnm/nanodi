@@ -13,7 +13,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "nanodi": "*",
+    "@nanodi/core": "*",
     "tslib": "^2.4.1"
   }
 }

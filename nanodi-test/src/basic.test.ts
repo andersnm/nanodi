@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inject, ServiceCollection } from 'nanodi';
+import { inject, ServiceCollection } from '@nanodi/core';
 
 test('Lifetimes: Singletons are shared, Scoped are unique per scope', async (t) => {
   const services = new ServiceCollection();

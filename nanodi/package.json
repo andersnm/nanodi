@@ -1,11 +1,14 @@
 {
-  "name": "nanodi",
-  "version": "0.0.2",
+  "name": "@nanodi/core",
+  "version": "0.0.4",
   "private": false,
   "type": "module",
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.js",
   "source": "./src/index.ts",
+  "files": [ "dist" ],
+  "homepage": "https://github.com/andersnm/nanodi",
+  "repository": "https://github.com/andersnm/nanodi",
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
