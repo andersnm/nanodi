@@ -67,9 +67,8 @@ export class ServiceProvider {
   }
 
   protected resolveInternal<T>(key: RegistrationKey<T>): T {
-    let instance = this.instances.get(key);
-    if (instance) {
-      return instance;
+    if (this.instances.has(key)) {
+      return this.instances.get(key);
     }
 
     const registration = this.services.get(key);

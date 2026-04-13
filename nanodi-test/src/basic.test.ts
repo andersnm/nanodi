@@ -209,3 +209,45 @@ test('Concurrency: Shared instance stack fails with async factories', async () =
   // both finish might even be [ "ServiceA" ] (leftover) if the 
   // pops happened in the wrong order.
 });
+
+test('Factories cache falsy values (0, false, null, etc.) instead of re-invoking', () => {
+  const services = new ServiceCollection();
+
+  let singletonFactoryCallCount = 0;
+  let scopedFactoryCallCount = 0;
+
+  services.register('singletonZero', { 
+    useSingletonFactory: () => {
+      singletonFactoryCallCount++;
+      return 0;
+    }
+  });
+
+  services.register('scopedFalse', { 
+    useScopedFactory: () => {
+      scopedFactoryCallCount++;
+      return false;
+    }
+  });
+
+  const root = services.createProvider();
+  const scope = root.createScope();
+
+  // Singleton factory should only be called once
+  const result1 = root.resolve('singletonZero');
+  assert.strictEqual(result1, 0, "First call returns 0");
+  assert.strictEqual(singletonFactoryCallCount, 1, "Factory called once");
+
+  const result2 = root.resolve('singletonZero');
+  assert.strictEqual(result2, 0, "Second call returns 0");
+  assert.strictEqual(singletonFactoryCallCount, 1, "Factory should still be called only once (cached)");
+
+  // Scoped factory should only be called once per scope
+  const result3 = scope.resolve('scopedFalse');
+  assert.strictEqual(result3, false, "First call returns false");
+  assert.strictEqual(scopedFactoryCallCount, 1, "Scoped factory called once");
+
+  const result4 = scope.resolve('scopedFalse');
+  assert.strictEqual(result4, false, "Second call returns false");
+  assert.strictEqual(scopedFactoryCallCount, 1, "Scoped factory should still be called only once (cached in scope)");
+});
