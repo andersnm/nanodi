@@ -1,9 +1,19 @@
 # nanodi
 
-Modern, immutable, simple and explicit constructor DI container for Nodejs and runtimes supporting async_hooks (not browsers). No auto-registration nor decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+Modern, simple, immutable, synchronous constructor DI container for Node.js and browsers. No auto-registration nor decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+
+## Design principles
+- **Synchronous:** Constructors and factories must not perform async work.
+- **Ambient Injection:** `inject()` works only during a synchronous `resolve()` call.
+- **Immutability:** The registration map is frozen once a provider is created.
+- **Shared Composition:** All providers share the same registration map. Scopes cannot override services.
+- **Root Resolution:** Global singletons and values are always resolved and cached in the root container.
+- **Isolation:** Scoped providers cache only scoped instances.
+- **Cycle Protection:** Circular dependencies throw an error.
+- **Lifetime Integrity:** Scoped services cannot be injected into singletons.
 
 ## Usage 
-1. Create `ServiceCollection` during application startup and register all services:
+1. Register services at startup:
 
 ```ts
 const services = new ServiceCollection();
@@ -11,13 +21,13 @@ services.register(Database, { useSingletonClass: PostgresDb });
 services.register(UserService, { useScopedClass: UserService });
 ```
 
-2. Create `ServiceProvider` from `ServiceCollection`:
+2. Create the root provider:
 
 ```ts
 const root = services.createProvider();
 ```
 
-3. Build service with ambient injection:
+3. Use ambient injection inside constructors:
 
 ```ts
 class UserService {
@@ -59,15 +69,6 @@ app.get('/user', async (req, res) => {
 - If `useSingletonClass` is provided, create singleton, else:
 - If `useSingletonFactory` is provided, create singleton, else
 - Throw error
-
-## Rules
-- **Immutability:** `ServiceCollection` is frozen once a `ServiceProvider` is created.
-- **Shared Composition:** All providers share the same registration map; scopes cannot override services.
-- **Root Resolution:** Global singletons and values are always resolved and cached in the root container.
-- **Isolation:** Scoped providers only cache scoped instances; these are cleared when the scope is garbage collected.
-- **Cycle Protection:** Circular dependencies (A -> B -> A) are detected and throw a runtime error.
-- **Lifetime Integrity:** To prevent captive dependencies, Scoped services cannot be injected into singletons.
-
 
 ## API Reference
 

@@ -107,7 +107,7 @@ test('Shadowing: Scoped registration creates new instance despite parent existin
   const services = new ServiceCollection();
   class UserContext { id = Math.random(); }
 
-  services.register('ctx', { useScopedClass: UserContext, useSingletonClass: UserContext });
+  services.register('ctx', { useScopedClass: UserContext });
 
   const root = services.createProvider();
   const rootCtx = root.resolve<UserContext>('ctx');
@@ -121,49 +121,26 @@ test('Shadowing: Scoped registration creates new instance despite parent existin
 test('Captive Dependency: Singleton should not be able to inject Scoped via a shared resolution chain', () => {
   const services = new ServiceCollection();
 
-  // 1. A Scoped service that we want to protect
-  services.register("ScopedService", { useScopedFactory: () => ({ name: 'scoped' }) });
-
-  // 2. A Singleton that incorrectly tries to grab that Scoped service
-  // In a real app, this might happen deep down a dependency tree
+  services.register("ScopedService", {
+    useScopedFactory: () => ({ name: 'scoped' })
+  });
   services.register("SingletonService", { 
     useSingletonFactory: () => {
-      // This should blow up because we are currently inside a 
-      // Singleton resolution, but 'ScopedService' is scoped.
       return {
         dependency: inject("ScopedService") 
       };
     } 
   });
 
-  // 3. An Entry Point to kick things off
-  services.register("EntryPoint", { useScopedClass: class {
-    s;
-    constructor(s = inject("SingletonService")) { this.s = s; }
-  }});
+  services.register("EntryPoint", {
+    useScopedClass: class {
+      s;
+      constructor(s = inject("SingletonService")) { this.s = s; }
+    }
+  });
 
   const root = services.createProvider();
   const scope = root.createScope();
-
-  // EXECUTION:
-  // scope.resolve("EntryPoint") -> [EntryPoint] (Scoped)
-  //   inject("SingletonService") -> delegates to Root Provider
-  
-  /* WITHOUT AMBIENT STACK:
-     RootProvider starts 'resolveInternal("SingletonService")'.
-     Its local this.resolutionStack is EMPTY [].
-     It calls the factory.
-     The factory calls inject("ScopedService").
-     The RootProvider looks at its empty stack and says "No parent, I guess I'm the boss!"
-     IT INCORRECTLY SUCCEEDS.
-  */
-
-  /* WITH AMBIENT STACK:
-     The stack ['EntryPoint'] is preserved in AsyncLocalStorage.
-     RootProvider sees the stack has ['EntryPoint'].
-     The Lifetime Guard sees 'EntryPoint' is the caller.
-     IT CORRECTLY THROWS.
-  */
 
   assert.throws(
     () => scope.resolve("EntryPoint"),
@@ -171,44 +148,6 @@ test('Captive Dependency: Singleton should not be able to inject Scoped via a sh
   );
 });
 
-test('Concurrency: Shared instance stack fails with async factories', async () => {
-  const services = new ServiceCollection();
-
-  services.register("ServiceA", {
-    useSingletonFactory: async () => {
-      // 1. ServiceA starts and pushes "ServiceA" to the instance stack
-      await new Promise(r => setTimeout(r, 50)); 
-      // 3. ServiceA resumes. 
-      // IF THE STACK IS ON THE INSTANCE, it now contains ["ServiceA", "ServiceB"]
-      // because ServiceB pushed itself while A was asleep!
-      return "A";
-    }
-  });
-
-  services.register("ServiceB", {
-    useSingletonFactory: async () => {
-      // 2. ServiceB starts while A is waiting. 
-      // It pushes "ServiceB" to the same instance stack.
-      return "B";
-    }
-  });
-
-  const root = services.createProvider();
-
-  // Run them in parallel
-  const [a, b] = await Promise.all([
-    root.resolve("ServiceA"),
-    root.resolve("ServiceB")
-  ]);
-
-  // If this test finishes without throwing "Circular Dependency", 
-  // and you have the stack on the instance, it's usually because 
-  // you aren't actually checking the stack correctly.
-  
-  // With the stack on the instance, the final stack state after 
-  // both finish might even be [ "ServiceA" ] (leftover) if the 
-  // pops happened in the wrong order.
-});
 
 test('Factories cache falsy values (0, false, null, etc.) instead of re-invoking', () => {
   const services = new ServiceCollection();

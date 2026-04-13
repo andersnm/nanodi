@@ -1,5 +1,3 @@
-import { AsyncLocalStorage } from 'async_hooks';
-
 const FRIEND = Symbol("friend");
 
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
@@ -50,6 +48,7 @@ export class ServiceProvider {
   private instances: Map<RegistrationKey<any>, any> = new Map();
   private parentProvider?: ServiceProvider;
   private resolutionStack: Resolution[] = [];
+  public static currentProvider?: ServiceProvider;
 
   constructor(friend: symbol, services: ServiceCollection, parentProvider?: ServiceProvider) {
     if (friend !== FRIEND) {
@@ -61,9 +60,14 @@ export class ServiceProvider {
   }
 
   resolve<T>(key: RegistrationKey<T>): T {
-    return GlobalServiceManager.runWith(this, () => {
-      return this.resolveInternal(key);
-    });
+    const previousProvider = ServiceProvider.currentProvider;
+    ServiceProvider.currentProvider = this;
+
+    const result: T = this.resolveInternal(key);
+
+    ServiceProvider.currentProvider = previousProvider;
+
+    return result;
   }
 
   protected resolveInternal<T>(key: RegistrationKey<T>): T {
@@ -149,20 +153,7 @@ export class ServiceProvider {
   }
 }
 
-class GlobalServiceManager {
-  private static storage = new AsyncLocalStorage<ServiceProvider>();
-
-  static runWith<T>(provider: ServiceProvider, fn: () => T): T {
-    return this.storage.run(provider, fn);
-  }
-
-  static getCurrentProvider(): ServiceProvider {
-    const provider = this.storage.getStore();
-    if (!provider) throw new Error("No active DI provider in this context");
-    return provider;
-  }
-}
-
 export function inject<T>(key: RegistrationKey<T>): T {
-  return GlobalServiceManager.getCurrentProvider().resolve(key);
+  if (!ServiceProvider.currentProvider) throw new Error("No active DI provider in this context");
+  return ServiceProvider.currentProvider.resolve(key);
 }
