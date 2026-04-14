@@ -8,6 +8,7 @@
   "scripts": {
     "build": "npm run build -ws",
     "test": "npm run test -workspace nanodi-test",
+    "test:dist": "npm run test:dist -workspace nanodi-test",
     "pack": "npm pack -w nanodi"
   },
   "devDependencies": {

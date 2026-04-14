@@ -17,8 +17,8 @@
   },
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json"
+    "build:esm": "tsc -p tsconfig.esm.json && node finalize.mjs module > dist/esm/package.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node finalize.mjs commonjs > dist/cjs/package.json"
   },
   "devDependencies": {
     "@types/node": "^18.11.18"

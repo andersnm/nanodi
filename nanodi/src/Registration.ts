@@ -1,4 +1,4 @@
-import { ServiceProvider } from "./ServiceProvider";
+import { ServiceProvider } from "./ServiceProvider.js";
 
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
 export type RegistrationKey<T> = string | Symbol | RegistrationConstructor<T>;

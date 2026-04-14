@@ -11,14 +11,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
           cache: 'npm'
       - run: npm ci
       - run: npm run build
@@ -26,7 +23,6 @@ jobs:
         working-directory: ./nanodi-test
       - run: npm run pack
       - uses: actions/upload-artifact@v4
-        if: matrix.node-version == '22.x'
         with:
           name: packages
           path: '*.tgz'

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test:dist": "node --enable-source-maps --test",
-    "test": "node --test --experimental-strip-types src/**/*.test.ts"
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
+    "test:dist": "node --enable-source-maps --test \"dist/**/*.test.js\""
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
