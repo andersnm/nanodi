@@ -195,3 +195,83 @@ test('Factories cache falsy values (0, false, null, etc.) instead of re-invoking
   assert.strictEqual(result4, false, "Second call returns false");
   assert.strictEqual(scopedFactoryCallCount, 1, "Scoped factory should still be called only once (cached in scope)");
 });
+
+test('Seed: throws when key is not registered', () => {
+  const services = new ServiceCollection();
+  const root = services.createProvider();
+  const scope = root.createScope();
+
+  assert.throws(
+    () => scope.seed('missing', 123),
+    /No registration found for key/
+  );
+});
+
+test('Seed: throws when registration is not scoped or seed-enabled', () => {
+  const services = new ServiceCollection();
+
+  services.register('notScoped', {
+    lifetime: "singleton",
+    useFactory: () => 42
+  });
+
+  const root = services.createProvider();
+  const scope = root.createScope();
+
+  assert.throws(
+    () => scope.seed('notScoped', 123),
+    /does not support seeding/
+  );
+});
+
+test('Seed: throws when instance already resolved before seeding', () => {
+  const services = new ServiceCollection();
+
+  services.register('scopedValue', {
+    lifetime: "scoped",
+    useFactory: () => Math.random()
+  });
+
+  const root = services.createProvider();
+  const scope = root.createScope();
+
+  // Resolve first → instance is created
+  scope.resolve('scopedValue');
+
+  assert.throws(
+    () => scope.seed('scopedValue', 999),
+    /already been resolved/
+  );
+});
+
+test('Seed: seeded instance is returned instead of factory/class result', () => {
+  const services = new ServiceCollection();
+
+  class Example {
+    n;
+    constructor(n = Math.random()) {
+      this.n = n;
+    }
+  }
+
+  services.register('req', {
+    lifetime: "scoped",
+  });
+
+  services.register('handler', {
+    lifetime: "scoped",
+    useClass: Example
+  });
+
+  const root = services.createProvider();
+  const scope = root.createScope();
+
+  const seededReq = { id: 123 };
+  scope.seed('req', seededReq);
+
+  const resolvedReq = scope.resolve<typeof seededReq>('req');
+  assert.strictEqual(resolvedReq, seededReq, "Seeded instance should be returned");
+
+  const handler = scope.resolve<Example>('handler');
+  assert.ok(handler instanceof Example, "Other scoped services still resolve normally");
+});

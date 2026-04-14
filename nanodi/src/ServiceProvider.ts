@@ -56,6 +56,23 @@ export class ServiceProvider {
     }
   }
 
+  seed<T>(key: RegistrationKey<T>, instance: T): void {
+    const registration = this.services.get(key);
+    if (!registration) {
+      throw new Error(`No registration found for key: ${key.toString()}`);
+    }
+
+    if (registration.lifetime !== "scoped") {
+      throw new Error(`Registration for key: ${key.toString()} does not support seeding`);
+    }
+
+    if (this.instances.has(key)) {
+      throw new Error(`Instance for key: ${key.toString()} has already been resolved and cannot be seeded`);
+    }
+
+    this.instances.set(key, instance);
+  }
+
   protected resolveInternal<T>(key: RegistrationKey<T>): T {
     if (this.instances.has(key)) {
       return this.instances.get(key);

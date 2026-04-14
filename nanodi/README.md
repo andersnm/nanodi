@@ -19,6 +19,7 @@ Modern, fast, simple, immutable, synchronous constructor DI container for Node.j
 const services = new ServiceCollection();
 services.register(Database, { lifetime: "singleton", useClass: PostgresDb });
 services.register(UserService, { lifetime: "scoped", useClass: UserService });
+services.register('req', { lifetime: "scoped" });
 ```
 
 2. Create the root provider:
@@ -33,9 +34,13 @@ const root = services.createProvider();
 class UserService {
   constructor(
     private db = inject(Database),
+    private req = inject<Request>('req')
   ) {}
 
   async getUser(id: number) {
+    if (!this.req.user) {
+      throw new Error("Unauthenticated");
+    }
     return await this.db.getUser(id);
   }
 }
@@ -46,6 +51,7 @@ class UserService {
 ```ts
 app.get('/user', async (req, res) => {
     const scope = root.createScope();
+    scope.seed('req', req);
 
     try {
         const service = scope.resolve(UserService);
@@ -88,6 +94,7 @@ The engine that resolves and caches instances.
 
 * **`resolve<T>(key: RegistrationKey<T>)`**: Returns the instance associated with the key. If the instance doesn't exist yet, it is created based on its registration strategy.
 * **`createScope()`**: Creates a child `ServiceProvider`. This child shares the same service registrations but maintains its own cache for **Scoped** services.
+* **`seed<T>(key: RegistrationKey<T>, instance: T)`**: Injects externally‑created instances into a Scoped provider before any resolution happens.
 
 ---
 

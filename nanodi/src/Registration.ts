@@ -22,7 +22,7 @@ export type ValueRegistration =
 
 export type SingletonRegistration =
   RegistrationBase<"singleton"> &
-  (Only<Strategy, "useClass"> | Only<Strategy, "useFactory"> | Only<Strategy, "useValue">);
+  (Only<Strategy, "useClass"> | Only<Strategy, "useFactory">);
 
 export type ScopedRegistration =
   RegistrationBase<"scoped"> &
