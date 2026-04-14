@@ -3,6 +3,10 @@ import { ServiceProvider } from "./ServiceProvider.js";
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
 export type RegistrationKey<T> = string | Symbol | RegistrationConstructor<T>;
 
+export type MapToKeys<T extends any[]> = {
+  [K in keyof T]: RegistrationKey<T[K]>
+};
+
 type Only<T, K extends keyof T> =
   T & { [P in Exclude<keyof T, K>]?: never };
 
