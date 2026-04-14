@@ -49,11 +49,11 @@ export class ServiceProvider {
     const previousProvider = ServiceProvider.currentProvider;
     ServiceProvider.currentProvider = this;
 
-    const result: T = this.resolveInternal(key);
-
-    ServiceProvider.currentProvider = previousProvider;
-
-    return result;
+    try {
+      return this.resolveInternal(key);
+    } finally {
+      ServiceProvider.currentProvider = previousProvider;
+    }
   }
 
   protected resolveInternal<T>(key: RegistrationKey<T>): T {
@@ -96,7 +96,7 @@ export class ServiceProvider {
     }
 
     if (registration.lifetime === "scoped" && registration.useFactory !== undefined) {
-      instance = registration.useFactory();
+      instance = registration.useFactory(this);
       this.instances.set(key, instance);
       return instance;
     }
@@ -106,7 +106,7 @@ export class ServiceProvider {
     }
 
     if (registration.lifetime === "transient" && registration.useFactory !== undefined) {
-      return registration.useFactory();
+      return registration.useFactory(this);
     }
 
     if (this.parentProvider) {
@@ -125,7 +125,7 @@ export class ServiceProvider {
       }
 
       if (registration.lifetime === "singleton" && registration.useFactory !== undefined) {
-        instance = registration.useFactory();
+        instance = registration.useFactory(this);
         this.instances.set(key, instance);
         return instance;
       }

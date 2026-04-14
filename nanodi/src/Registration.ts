@@ -1,3 +1,5 @@
+import { ServiceProvider } from "./ServiceProvider";
+
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
 export type RegistrationKey<T> = string | Symbol | RegistrationConstructor<T>;
 
@@ -7,7 +9,7 @@ type Only<T, K extends keyof T> =
 type Strategy = {
   useValue?: any;
   useClass?: RegistrationConstructor<any>;
-  useFactory?: (...args: any[]) => any;
+  useFactory?: (provider: ServiceProvider) => any;
 };
 
 type Lifetime = "value" | "singleton" | "scoped" | "transient";
