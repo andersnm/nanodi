@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inject, ServiceCollection } from '@nanodi/core';
+import { provide, ServiceCollection } from '@nanodi/core';
 
 test('Lifetimes: Singletons are shared, Scoped are unique per scope', async (t) => {
   const services = new ServiceCollection();
@@ -21,12 +21,12 @@ test('Lifetimes: Singletons are shared, Scoped are unique per scope', async (t) 
   assert.notStrictEqual(scope1.resolve('scoped'), scope2.resolve('scoped'), "Scoped instances should be unique to their provider");
 });
 
-test('Ambient Context: inject() finds the correct scoped instance', async () => {
+test('Ambient Context: provide() finds the correct scoped instance', async () => {
 
   class Service {
     id: number;
 
-    constructor(id: number = inject<number>('id')) {
+    constructor(id: number = provide<number>('id')) {
       this.id = id;
     }
   }
@@ -54,8 +54,8 @@ test('Ambient Context: inject() finds the correct scoped instance', async () => 
 test('Protection: Circular dependencies throw an error', () => {
   const services = new ServiceCollection();
 
-  class A { constructor() { inject('B'); } }
-  class B { constructor() { inject('A'); } }
+  class A { constructor() { provide('B'); } }
+  class B { constructor() { provide('A'); } }
 
   services.register('A', { lifetime: "singleton", useClass: A });
   services.register('B', { lifetime: "singleton", useClass: B });
@@ -78,12 +78,12 @@ test('Hierarchy: Scoped provider delegates to parent for singletons', () => {
   assert.strictEqual(root.resolve('config'), scope.resolve('config'), "Both should point to same instance");
 });
 
-test('Factories: Can use inject() inside factory functions', () => {
+test('Factories: Can use provide() inside factory functions', () => {
   const services = new ServiceCollection();
   
   services.register('token', { lifetime: "value", useValue: 'SECRET_123' });
   services.register('api', { lifetime: "scoped", useFactory: () => {
-    const t = inject<string>('token');
+    const t = provide<string>('token');
     return { auth: t };
   }});
 
@@ -118,7 +118,7 @@ test('Shadowing: Scoped registration creates new instance despite parent existin
   assert.notStrictEqual(rootCtx, scopeCtx, "Scope should have its own instance");
 });
 
-test('Captive Dependency: Singleton should not be able to inject Scoped via a shared resolution chain', () => {
+test('Captive Dependency: Singleton should not be able to provide Scoped via a shared resolution chain', () => {
   const services = new ServiceCollection();
 
   services.register("ScopedService", {
@@ -129,7 +129,7 @@ test('Captive Dependency: Singleton should not be able to inject Scoped via a sh
     lifetime: "singleton",
     useFactory: () => {
       return {
-        dependency: inject("ScopedService") 
+        dependency: provide("ScopedService") 
       };
     } 
   });
@@ -138,7 +138,7 @@ test('Captive Dependency: Singleton should not be able to inject Scoped via a sh
     lifetime: "singleton",
     useClass: class {
       s;
-      constructor(s = inject("SingletonService")) { this.s = s; }
+      constructor(s = provide("SingletonService")) { this.s = s; }
     }
   });
 

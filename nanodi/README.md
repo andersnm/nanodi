@@ -1,10 +1,11 @@
 # nanodi
 
-Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. No auto-registration nor decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. Manual bindings or auto-registration with decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
 
 ## Design principles
 - **Synchronous:** Constructors and factories must not perform async work.
-- **Ambient Injection:** `inject()` works only during a synchronous `resolve()` call.
+- **Type-bound Injection:** Register constructor argument bindings with `provider.bind()` or `@injectable()` decorator
+- **Global Fallback Injection:** Assign constructor default arguments using `provide()`. This couples the class to the DI system and is not recommended.
 - **Immutability:** The registration map is frozen once a provider is created.
 - **Shared Composition:** All providers share the same registration map. Scopes cannot override services.
 - **Root Resolution:** Global singletons and values are always resolved and cached in the root container.
@@ -12,14 +13,15 @@ Modern, fast, simple, immutable, synchronous constructor DI container for Node.j
 - **Cycle Protection:** Circular dependencies throw an error.
 - **Lifetime Integrity:** Scoped services cannot be injected into singletons.
 
-## Usage 
+## Usage
 1. Register services at startup:
 
 ```ts
 const services = new ServiceCollection();
 services.register(Database, { lifetime: "singleton", useClass: PostgresDb });
-services.register(UserService, { lifetime: "scoped", useClass: UserService });
 services.register('req', { lifetime: "scoped" });
+
+autobindInjectables(services); // Registers decorated types
 ```
 
 2. Create the root provider:
@@ -28,14 +30,12 @@ services.register('req', { lifetime: "scoped" });
 const root = services.createProvider();
 ```
 
-3. Use ambient injection inside constructors:
+3. Register type and bind type-safe arguments using decorator syntax:
 
 ```ts
+@injectable<typeof UserService>("scoped", inject(Database), inject('req'))
 class UserService {
-  constructor(
-    private db = inject(Database),
-    private req = inject<Request>('req')
-  ) {}
+  constructor(private db: Database, private req: express.Request) {}
 
   async getUser(id: number) {
     if (!this.req.user) {
@@ -62,6 +62,38 @@ app.get('/user', async (req, res) => {
         res.status(500).send(err.message);
     }
 });
+```
+
+## Manual binding
+
+Decorators-based auto-binding uses `.register()` and `.bind()` under the hood and supports type-checking against the constructor parameters:
+
+```ts
+services.register({"lifetime": "scoped", useClass: UserService })
+services.bind<typeof UserService>(UserService, [ inject(DataBase), inject("req") ]);
+
+// Equivalent to:
+// @injectable("scoped", inject(Database), inject('req'))
+// class UserService { ... }
+```
+
+## Global fallback injection
+
+It is possible to inject constructor parameters using the global `provide()` function as  a default argument. This creates a tight coupling between the service classes and the service provider and is not recommended.
+
+```ts
+class UserService {
+  constructor(
+    private db: Database = provide(Database),
+    private req: express.Request = provide('req')) {}
+
+  async getUser(id: number) {
+    if (!this.req.user) {
+      throw new Error("Unauthenticated");
+    }
+    return await this.db.getUser(id);
+  }
+}
 ```
 
 ## Resolution logic and order
@@ -100,8 +132,8 @@ The engine that resolves and caches instances.
 
 ### Global Functions
 
-#### `inject<T>(key: RegistrationKey<T>): T`
-The primary way to retrieve dependencies inside constructors or functions within an active scope.
+#### `provide<T>(key: RegistrationKey<T>): T`
+Resolves an instance inside constructors or functions within an active scope.
 * **Context:** Must be called during the execution flow of a `resolve()` call.
 * **Usage:** Best used as a default constructor argument.
 
@@ -131,7 +163,7 @@ Describes a service type and its lifetime strategy.
 | **`"value"`** | Always returns the provided constant. No construction. |
 | **`"singleton"`** | Created once in the **root** provider and reused everywhere. |
 | **`"scoped"`** | Created once **per scope**. Scoped instances never leak upward. |
-| **`"transient"`** | A new instance is created on every `resolve()` or `inject()`. |
+| **`"transient"`** | A new instance is created on every `resolve()`. |
 
 ---
 

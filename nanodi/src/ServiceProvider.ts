@@ -1,10 +1,11 @@
-import { Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
+import { Registration, RegistrationConstructor, RegistrationKey, MapToKeys } from "./Registration.js";
 
 const FRIEND = Symbol("friend");
 
 export class ServiceCollection {
   private frozen: boolean = false;
-  private services: Map<RegistrationKey<any>, Registration> = new Map()
+  private services: Map<RegistrationKey<any>, Registration> = new Map();
+  private factories: Map<RegistrationConstructor<any>, RegistrationKey<any>[]> = new Map();
 
   register(key: RegistrationKey<any>, registration: Registration): void {
     if (this.frozen) {
@@ -14,6 +15,14 @@ export class ServiceCollection {
     this.services.set(key, registration);
   }
 
+  bind<T extends RegistrationConstructor<any>>(constructor: RegistrationConstructor<T>, keys: MapToKeys<ConstructorParameters<T>>): void {
+    if (this.frozen) {
+      throw new Error("Cannot bind new services after provider is created");
+    }
+
+    this.factories.set(constructor, keys);
+  }
+
   createProvider(): ServiceProvider {
     this.frozen = true;
     return new ServiceProvider(FRIEND, this);
@@ -21,6 +30,10 @@ export class ServiceCollection {
 
   get(key: RegistrationKey<any>): Registration | undefined {
     return this.services.get(key);
+  }
+
+  getFactory<T extends RegistrationConstructor<any>>(key: RegistrationConstructor<T>): MapToKeys<ConstructorParameters<T>> | undefined {
+    return this.factories.get(key) as MapToKeys<ConstructorParameters<T>> | undefined;
   }
 }
 
@@ -101,13 +114,22 @@ export class ServiceProvider {
     } finally {
       this.resolutionStack.pop();
     }
+  }
 
+  private createInstance<T extends RegistrationConstructor<any>>(useClass: RegistrationConstructor<T>): T {
+    const factoryKeys = this.services.getFactory<T>(useClass);
+    if (factoryKeys) {
+      const factoryArgs = factoryKeys.map(k => this.resolveInternal(k));
+      return new useClass(...factoryArgs);
+    } else {
+      return new useClass();
+    }
   }
 
   protected resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration): T {
     let instance;
     if (registration.lifetime === "scoped" && registration.useClass !== undefined) {
-      instance = new registration.useClass();
+      instance = this.createInstance(registration.useClass);
       this.instances.set(key, instance);
       return instance;
     }
@@ -119,7 +141,7 @@ export class ServiceProvider {
     }
 
     if (registration.lifetime === "transient" && registration.useClass !== undefined) {
-      return new registration.useClass();
+      return this.createInstance(registration.useClass);
     }
 
     if (registration.lifetime === "transient" && registration.useFactory !== undefined) {
@@ -136,7 +158,7 @@ export class ServiceProvider {
       }
 
       if (registration.lifetime === "singleton" && registration.useClass !== undefined) {
-        instance = new registration.useClass();
+        instance = this.createInstance(registration.useClass);
         this.instances.set(key, instance);
         return instance;
       }
@@ -156,7 +178,7 @@ export class ServiceProvider {
   }
 }
 
-export function inject<T>(key: RegistrationKey<T>): T {
+export function provide<T>(key: RegistrationKey<T>): T {
   if (!ServiceProvider.currentProvider) throw new Error("No active DI provider in this context");
   return ServiceProvider.currentProvider.resolve(key);
 }
