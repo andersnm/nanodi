@@ -24,6 +24,5 @@
     "@types/node": "^18.11.18"
   },
   "dependencies": {
-    "tslib": "^2.4.1"
   }
 }
