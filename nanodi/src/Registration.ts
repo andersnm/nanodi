@@ -1,7 +1,8 @@
 import { ServiceProvider } from "./ServiceProvider.js";
 
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
-export type RegistrationKey<T> = string | Symbol | RegistrationConstructor<T>;
+export type RegistrationSymbol<T> = symbol & { __type__: T };
+export type RegistrationKey<T> = string | RegistrationSymbol<T> | RegistrationConstructor<T>;
 
 export type MapToKeys<T extends any[]> = {
   [K in keyof T]: RegistrationKey<T[K]>
@@ -16,7 +17,7 @@ type Strategy = {
   useFactory?: (provider: ServiceProvider) => any;
 };
 
-type Lifetime = "value" | "singleton" | "scoped" | "transient";
+export type Lifetime = "value" | "singleton" | "scoped" | "transient";
 
 type RegistrationBase<L extends Lifetime> = { lifetime: L };
 
@@ -41,3 +42,7 @@ export type Registration =
   | SingletonRegistration
   | ScopedRegistration
   | TransientRegistration;
+
+export function registrationSymbol<T>(name: string): RegistrationKey<T> {
+  return Symbol(name) as RegistrationSymbol<T>;
+}
