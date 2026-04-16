@@ -4,6 +4,9 @@ export type RegistrationConstructor<T> = new (...args: any[]) => T;
 export type RegistrationSymbol<T> = symbol & { __type__: T };
 export type RegistrationKey<T> = string | RegistrationSymbol<T> | RegistrationConstructor<T>;
 
+// Helper to get the underlying type of a RegistrationSymbol<T>. Useful when T is anonymous
+export type RegistrationSymbolType<K> = K extends RegistrationKey<infer T> ? T : never;
+
 export type MapToKeys<T extends any[]> = {
   [K in keyof T]: RegistrationKey<T[K]>
 };
@@ -43,6 +46,6 @@ export type Registration =
   | ScopedRegistration
   | TransientRegistration;
 
-export function registrationSymbol<T>(name: string): RegistrationKey<T> {
+export function registrationSymbol<T>(name: string): RegistrationSymbol<T> {
   return Symbol(name) as RegistrationSymbol<T>;
 }
