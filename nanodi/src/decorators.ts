@@ -1,5 +1,5 @@
 import { MapToKeys, RegistrationConstructor, RegistrationKey } from "./Registration.js";
-import { ServiceCollection } from "./ServiceProvider.js";
+import { ServiceCollection } from "./ServiceCollection.js";
 
 /*
 typesafe syntax:

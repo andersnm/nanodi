@@ -46,6 +46,6 @@ export type Registration =
   | ScopedRegistration
   | TransientRegistration;
 
-export function registrationSymbol<T>(name: string): RegistrationSymbol<T> {
+export function registrationSymbol<T = any>(name: string): RegistrationSymbol<T> {
   return Symbol(name) as RegistrationSymbol<T>;
 }
