@@ -1,4 +1,4 @@
-import { MapToKeys, RegistrationConstructor, RegistrationKey } from "./Registration.js";
+import { RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
 import { ServiceCollection } from "./ServiceCollection.js";
 
 /*
@@ -14,14 +14,14 @@ class My {
 interface Injectee<T extends RegistrationConstructor<any>> {
   lifetime: "scoped" | "transient" | "singleton";
   type: RegistrationConstructor<T>;
-  tokens: MapToKeys<ConstructorParameters<T>>;
+  tokens: RegistrationConstructorParameters<T>;
 }
 
 const registry: Injectee<any>[] = [];
 
 export function injectable<T extends new (...args: any[]) => any>(
   lifetime: "scoped" | "transient" | "singleton",
-  ...tokens: MapToKeys<ConstructorParameters<T>>
+  ...tokens: RegistrationConstructorParameters<T>
 ) {
   return (value: T, context: ClassDecoratorContext<T>) => {
     registry.push({ lifetime, type: value, tokens } );

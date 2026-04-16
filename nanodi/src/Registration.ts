@@ -2,12 +2,17 @@ import { ServiceProvider } from "./ServiceProvider.js";
 
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
 export type RegistrationSymbol<T> = symbol & { __type__: T };
+
+/** Injection token type. A reference to an object of type T. Can be a string, symbol, or class. */
 export type RegistrationKey<T> = string | RegistrationSymbol<T> | RegistrationConstructor<T>;
 
-// Helper to get the underlying type of a RegistrationSymbol<T>. Useful when T is anonymous
+/** Helper to get the underlying type of a RegistrationSymbol<T>. Useful when T is anonymous. */
 export type RegistrationSymbolType<K> = K extends RegistrationKey<infer T> ? T : never;
 
-export type MapToKeys<T extends any[]> = {
+/** Helper to transform constructor parameters into an array of named RegistrationKey<T> where T is the original parameter type. */
+export type RegistrationConstructorParameters<T extends RegistrationConstructor<any>> = MapToKeys<ConstructorParameters<T>>; 
+
+type MapToKeys<T extends any[]> = {
   [K in keyof T]: RegistrationKey<T[K]>
 };
 

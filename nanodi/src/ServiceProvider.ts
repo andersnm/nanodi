@@ -1,5 +1,5 @@
 import { FRIEND } from "./friend.js";
-import { Registration, RegistrationConstructor, RegistrationKey, MapToKeys } from "./Registration.js";
+import { Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
 import { ServiceCollection } from "./ServiceCollection.js";
 
 interface Resolution {

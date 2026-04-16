@@ -1,5 +1,5 @@
 import { FRIEND } from "./friend.js";
-import { MapToKeys, Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
+import { Registration, RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
 import { ServiceProvider } from "./ServiceProvider.js";
 
 export class ServiceCollection {
@@ -15,7 +15,7 @@ export class ServiceCollection {
     this.services.set(key, registration);
   }
 
-  bind<T extends RegistrationConstructor<any>>(constructor: T, keys: MapToKeys<ConstructorParameters<T>>): void {
+  bind<T extends RegistrationConstructor<any>>(constructor: T, keys: RegistrationConstructorParameters<T>): void {
     if (this.frozen) {
       throw new Error("Cannot bind new services after provider is created");
     }
@@ -32,7 +32,7 @@ export class ServiceCollection {
     return this.services.get(key);
   }
 
-  getFactory<T extends RegistrationConstructor<any>>(key: T): MapToKeys<ConstructorParameters<T>> | undefined {
-    return this.factories.get(key) as MapToKeys<ConstructorParameters<T>> | undefined;
+  getFactory<T extends RegistrationConstructor<any>>(key: T): RegistrationConstructorParameters<T> | undefined {
+    return this.factories.get(key) as RegistrationConstructorParameters<T> | undefined;
   }
 }
