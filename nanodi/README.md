@@ -1,6 +1,6 @@
 # nanodi
 
-Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. Manual bindings or auto-registration with decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. Manual bindings or auto-registration with official ECMAScript decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
 
 ## Design principles
 - **Synchronous:** Constructors and factories must not perform async work.
