@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import { registrationSymbol, ServiceCollection } from "@nanodi/core";
+import { RegistrationClass, ServiceCollection } from "@nanodi/core";
 
 describe("ServiceCollection.bind()", () => {
   test("stores constructor → dependency keys mapping", () => {
@@ -12,13 +12,11 @@ describe("ServiceCollection.bind()", () => {
       }
     }
 
-    const AKey = registrationSymbol("A");
+    sc.register(A, { lifetime: "transient", useClass: A, args: [A] });
 
-    sc.bind(A, [AKey]);
-
-    const factory = sc.getFactory(A);
+    const factory = sc.get(A) as RegistrationClass<A>;
     assert.ok(factory);
-    assert.deepStrictEqual(factory, [AKey]);
+    assert.deepStrictEqual(factory.args, [A]);
   });
 
   test("allows multiple binds for different constructors", () => {
@@ -36,101 +34,99 @@ describe("ServiceCollection.bind()", () => {
       constructor(v: any) {}
     }
 
-    const AKey = registrationSymbol("A");
-    const BKey = registrationSymbol("B");
-    const CKey = registrationSymbol("C");
+    sc.register(A, { lifetime: "transient", useClass: A, args: [B] });
+    sc.register(B, { lifetime: "transient", useClass: B, args: [C] });
 
-    sc.bind(A, [BKey]);
-    sc.bind(B, [CKey]);
+    const factoryA = sc.get(A) as RegistrationClass<A>;
+    const factoryB = sc.get(B) as RegistrationClass<B>;
 
-    assert.deepStrictEqual(sc.getFactory(A), [BKey]);
-    assert.deepStrictEqual(sc.getFactory(B), [CKey]);
-    assert.strictEqual(sc.getFactory(C), undefined);
+    assert.deepStrictEqual(factoryA.args, [B]);
+    assert.deepStrictEqual(factoryB.args, [C]);
+    assert.strictEqual(sc.get(C), undefined);
   });
 
   test("throws when binding after provider is created (frozen)", () => {
     const sc = new ServiceCollection();
 
     class A {
-      constructor(v: any) {}
+      constructor() {}
     }
-    const AKey = registrationSymbol("A");
 
     sc.createProvider(); // freezes collection
 
     assert.throws(() => {
-      sc.bind(A, [AKey]);
-    }, /Cannot bind new services after provider is created/);
+      sc.register(A, { lifetime: "transient", useClass: A, args: [] });
+    }, /Cannot register new services after provider is created/);
   });
 
   test("constructor args are resolved using bind() mapping", () => {
     const sc = new ServiceCollection();
 
-    const AKey = registrationSymbol("A");
-    const BKey = registrationSymbol("B");
-
-    class B {
+    class A {
       value;
       constructor() {
         this.value = 42;
       }
     }
 
-    class A {
-      b;
-      constructor(b: any) {
-        this.b = b;
+    class B {
+      a;
+      constructor(a: any) {
+        this.a = a;
       }
     }
 
-    sc.register(BKey, { lifetime: "transient", useClass: B });
-    sc.register(AKey, { lifetime: "transient", useClass: A });
-
-    // bind A → [BKey]
-    sc.bind(A, [BKey]);
+    sc.register(A, { lifetime: "transient", useClass: A });
+    sc.register(B, { lifetime: "transient", useClass: B, args: [A] });
 
     const provider = sc.createProvider();
 
-    const a = provider.resolve(AKey);
+    const b = provider.resolve(B);
 
-    assert.ok(a instanceof A);
-    assert.ok(a.b instanceof B);
-    assert.strictEqual(a.b.value, 42);
+    assert.ok(b instanceof B);
+    assert.ok(b.a instanceof A);
+    assert.strictEqual(b.a.value, 42);
   });
 
   test("bind() supports multiple constructor parameters", () => {
     const sc = new ServiceCollection();
 
-    const AKey = registrationSymbol("A");
-    const BKey = registrationSymbol("B");
-    const CKey = registrationSymbol("C");
-
-    class B {
-      name;
-      constructor() {
-        this.name = "B"; } }
-    class C {
-      name;
-      constructor() { this.name = "C"; } }
-
     class A {
-      b; c;
-      constructor(b: any, c: any) {
-        this.b = b;
-        this.c = c;
+      name; tmp1;
+      constructor() {
+        this.name = "A";
+        this.tmp1 = Math.random();
       }
     }
 
-    sc.register(BKey, { lifetime: "transient", useClass: B });
-    sc.register(CKey, { lifetime: "transient", useClass: C });
-    sc.register(AKey, { lifetime: "transient", useClass: A });
+    class B {
+      a; name; tmp2;
+      constructor(a: A) {
+        this.a = a;
+        this.name = "B";
+        this.tmp2 = Math.random();
+      }
+    }
 
-    sc.bind(A, [BKey, CKey]);
+    class C {
+      a; b; name; tmp3;
+      constructor(a: A, b: B) {
+        this.a = a;
+        this.b = b;
+        this.name = "C";
+        this.tmp3 = Math.random();
+      }
+    }
+
+    sc.registerClass(A, "transient");
+    sc.registerClass(B, "transient", A);
+    sc.registerClass(C, "transient", A, B);
 
     const provider = sc.createProvider();
-    const a = provider.resolve(AKey);
+    const c = provider.resolve(C);
 
-    assert.strictEqual(a.b.name, "B");
-    assert.strictEqual(a.c.name, "C");
+    assert.strictEqual(c.a.name, "A");
+    assert.strictEqual(c.b.name, "B");
+    assert.strictEqual(c.b.a.name, "A");
   });
 });

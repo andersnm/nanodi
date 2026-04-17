@@ -16,40 +16,33 @@ type MapToKeys<T extends any[]> = {
   [K in keyof T]: RegistrationKey<T[K]>
 };
 
-type Only<T, K extends keyof T> =
-  T & { [P in Exclude<keyof T, K>]?: never };
+export type Lifetime = "value" | "singleton" | "scoped" | "transient" | "seed";
 
-type Strategy = {
-  useValue?: any;
-  useClass?: RegistrationConstructor<any>;
-  useFactory?: (provider: ServiceProvider) => any;
-};
+export interface RegistrationValue<T> {
+  lifetime: "value";
+  useValue: T;
+}
 
-export type Lifetime = "value" | "singleton" | "scoped" | "transient";
+export interface RegistrationSeed {
+  lifetime: "seed";
+}
 
-type RegistrationBase<L extends Lifetime> = { lifetime: L };
+export interface RegistrationClass<T> {
+  lifetime: "singleton" | "scoped" | "transient";
+  useClass: RegistrationConstructor<T>;
+  args?: RegistrationKey<any>[]; 
+}
 
-export type ValueRegistration =
-  RegistrationBase<"value"> &
-  Only<Strategy, "useValue">;
+export interface RegistrationFactory<T> {
+  lifetime: "singleton" | "scoped" | "transient";
+  useFactory: (provider: ServiceProvider) => T;
+}
 
-export type SingletonRegistration =
-  RegistrationBase<"singleton"> &
-  (Only<Strategy, "useClass"> | Only<Strategy, "useFactory">);
-
-export type ScopedRegistration =
-  RegistrationBase<"scoped"> &
-  (Only<Strategy, "useClass"> | Only<Strategy, "useFactory">);
-
-export type TransientRegistration =
-  RegistrationBase<"transient"> &
-  (Only<Strategy, "useClass"> | Only<Strategy, "useFactory">);
-
-export type Registration =
-  | ValueRegistration
-  | SingletonRegistration
-  | ScopedRegistration
-  | TransientRegistration;
+export type Registration<T> =
+  | RegistrationValue<T>
+  | RegistrationSeed
+  | RegistrationClass<T>
+  | RegistrationFactory<T>;
 
 export function registrationSymbol<T = any>(name: string): RegistrationSymbol<T> {
   return Symbol(name) as RegistrationSymbol<T>;

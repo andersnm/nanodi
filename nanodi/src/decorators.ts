@@ -1,30 +1,14 @@
-import { RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
+import { RegistrationClass, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
 import { ServiceCollection } from "./ServiceCollection.js";
 
-/*
-typesafe syntax:
-
-@injectable<typeof My>("scoped", inject("test"), inject("hallo")) 
-class My {
-  constructor(public test: string, public hallo: number) {
-  }
-}
-*/
-
-interface Injectee<T extends RegistrationConstructor<any>> {
-  lifetime: "scoped" | "transient" | "singleton";
-  type: RegistrationConstructor<T>;
-  tokens: RegistrationConstructorParameters<T>;
-}
-
-const registry: Injectee<any>[] = [];
+const registry: RegistrationClass<any>[] = [];
 
 export function injectable<T extends new (...args: any[]) => any>(
   lifetime: "scoped" | "transient" | "singleton",
-  ...tokens: RegistrationConstructorParameters<T>
+  ...args: RegistrationConstructorParameters<T>
 ) {
   return (value: T, context: ClassDecoratorContext<T>) => {
-    registry.push({ lifetime, type: value, tokens } );
+    registry.push({ lifetime, useClass: value, args } );
   };
 }
 
@@ -34,8 +18,7 @@ export function inject<T>(key: RegistrationKey<T>): RegistrationKey<T> {
 
 export function autobindInjectables(collection: ServiceCollection) {
   for (let registration of registry) {
-    collection.register(registration.type, { lifetime: registration.lifetime, useClass: registration.type });
-    collection.bind(registration.type, registration.tokens);
+    collection.registerClass(registration.useClass, registration.lifetime, ...(registration.args || []));
   }
 }
 

@@ -220,27 +220,21 @@ test('Seed: throws when registration is not scoped or seed-enabled', () => {
 
   assert.throws(
     () => scope.seed('notScoped', 123),
-    /does not support seeding/
+    /must have "seed" lifetime/
   );
 });
 
-test('Seed: throws when instance already resolved before seeding', () => {
+test('Seed: throws when instance has not been seeded', () => {
   const services = new ServiceCollection();
 
-  services.register('scopedValue', {
-    lifetime: "scoped",
-    useFactory: () => Math.random()
-  });
+  services.register("scopedValue", { lifetime: "seed" });
 
   const root = services.createProvider();
   const scope = root.createScope();
 
-  // Resolve first → instance is created
-  scope.resolve('scopedValue');
-
   assert.throws(
-    () => scope.seed('scopedValue', 999),
-    /already been resolved/
+    () => scope.resolve("scopedValue"),
+    /Key: scopedValue has not been seeded/
   );
 });
 
@@ -254,24 +248,19 @@ test('Seed: seeded instance is returned instead of factory/class result', () => 
     }
   }
 
-  services.register('req', {
-    lifetime: "scoped",
-  });
+  services.register("req", { lifetime: "seed" });
 
-  services.register('handler', {
-    lifetime: "scoped",
-    useClass: Example
-  });
+  services.registerClass(Example, "scoped");
 
   const root = services.createProvider();
   const scope = root.createScope();
 
   const seededReq = { id: 123 };
-  scope.seed('req', seededReq);
+  scope.seed("req", seededReq);
 
-  const resolvedReq = scope.resolve<typeof seededReq>('req');
+  const resolvedReq = scope.resolve<typeof seededReq>("req");
   assert.strictEqual(resolvedReq, seededReq, "Seeded instance should be returned");
 
-  const handler = scope.resolve<Example>('handler');
+  const handler = scope.resolve(Example);
   assert.ok(handler instanceof Example, "Other scoped services still resolve normally");
 });

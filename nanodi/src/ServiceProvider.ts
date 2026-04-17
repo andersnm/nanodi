@@ -4,7 +4,7 @@ import { ServiceCollection } from "./ServiceCollection.js";
 
 interface Resolution {
   key: RegistrationKey<any>;
-  registration: Registration;
+  registration: Registration<any>;
 }
 
 export class ServiceProvider {
@@ -40,8 +40,8 @@ export class ServiceProvider {
       throw new Error(`No registration found for key: ${key.toString()}`);
     }
 
-    if (registration.lifetime !== "scoped") {
-      throw new Error(`Registration for key: ${key.toString()} does not support seeding`);
+    if (registration.lifetime !== "seed") {
+      throw new Error(`Registration for key: ${key.toString()} must have "seed" lifetime`);
     }
 
     if (this.instances.has(key)) {
@@ -81,35 +81,30 @@ export class ServiceProvider {
     }
   }
 
-  private createInstance<T extends RegistrationConstructor<any>>(useClass: T): InstanceType<T> {
-    const factoryKeys = this.services.getFactory<T>(useClass);
-    if (factoryKeys) {
-      const factoryArgs = factoryKeys.map(k => this.resolveInternal(k));
-      return new useClass(...factoryArgs);
-    } else {
-      return new useClass();
-    }
+  private createInstance<T extends RegistrationConstructor<any>>(useClass: T, args: RegistrationKey<any>[]): InstanceType<T> {
+    const factoryArgs = args.map(k => this.resolveInternal(k));
+    return new useClass(...factoryArgs);
   }
 
-  protected resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration): T {
+  protected resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration<T>): T {
     let instance;
-    if (registration.lifetime === "scoped" && registration.useClass !== undefined) {
-      instance = this.createInstance(registration.useClass);
+    if (registration.lifetime === "scoped" && "useClass" in registration) {
+      instance = this.createInstance(registration.useClass, registration.args || []);
       this.instances.set(key, instance);
       return instance;
     }
 
-    if (registration.lifetime === "scoped" && registration.useFactory !== undefined) {
+    if (registration.lifetime === "scoped" && "useFactory" in registration) {
       instance = registration.useFactory(this);
       this.instances.set(key, instance);
       return instance;
     }
 
-    if (registration.lifetime === "transient" && registration.useClass !== undefined) {
-      return this.createInstance(registration.useClass);
+    if (registration.lifetime === "transient" && "useClass" in registration) {
+      return this.createInstance(registration.useClass, registration.args || []);
     }
 
-    if (registration.lifetime === "transient" && registration.useFactory !== undefined) {
+    if (registration.lifetime === "transient" && "useFactory" in registration) {
       return registration.useFactory(this);
     }
 
@@ -117,21 +112,25 @@ export class ServiceProvider {
       return this.parentProvider.resolveInternal(key);
     } else {
 
-      if (registration.lifetime === "value" && registration.useValue !== undefined) {
+      if (registration.lifetime === "value" && "useValue" in registration) {
         this.instances.set(key, registration.useValue);
         return registration.useValue;
       }
 
-      if (registration.lifetime === "singleton" && registration.useClass !== undefined) {
-        instance = this.createInstance(registration.useClass);
+      if (registration.lifetime === "singleton" && "useClass" in registration) {
+        instance = this.createInstance(registration.useClass, registration.args || []);
         this.instances.set(key, instance);
         return instance;
       }
 
-      if (registration.lifetime === "singleton" && registration.useFactory !== undefined) {
+      if (registration.lifetime === "singleton" && "useFactory" in registration) {
         instance = registration.useFactory(this);
         this.instances.set(key, instance);
         return instance;
+      }
+
+      if (registration.lifetime === "seed") {
+        throw new Error(`Key: ${key.toString()} has not been seeded`);
       }
 
       throw new Error(`Invalid registration for key: ${key.toString()}`);

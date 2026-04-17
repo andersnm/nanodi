@@ -4,10 +4,10 @@ import { ServiceProvider } from "./ServiceProvider.js";
 
 export class ServiceCollection {
   private frozen: boolean = false;
-  private services: Map<RegistrationKey<any>, Registration> = new Map();
-  private factories: Map<RegistrationConstructor<any>, RegistrationKey<any>[]> = new Map();
+  private services: Map<RegistrationKey<any>, Registration<any>> = new Map();
 
-  register(key: RegistrationKey<any>, registration: Registration): void {
+  /** Register a service with a specific key and registration details. */
+  register<T>(key: RegistrationKey<T>, registration: Registration<T>): void {
     if (this.frozen) {
       throw new Error("Cannot register new services after provider is created");
     }
@@ -15,12 +15,22 @@ export class ServiceCollection {
     this.services.set(key, registration);
   }
 
-  bind<T extends RegistrationConstructor<any>>(constructor: T, keys: RegistrationConstructorParameters<T>): void {
+  /** Register a service class with typed constructor bindings. */
+  registerClass<T extends RegistrationConstructor<any>>(useClass: T, lifetime: "singleton" | "scoped" | "transient", ...args: RegistrationConstructorParameters<T>): void {
     if (this.frozen) {
-      throw new Error("Cannot bind new services after provider is created");
+      throw new Error("Cannot register new services after provider is created");
     }
 
-    this.factories.set(constructor, keys);
+    this.register<T>(useClass, { lifetime, useClass, args });
+  }
+
+  /** Register a service instantiated by factory callback. */
+  registerFactory<T>(key: RegistrationKey<T>, lifetime: "singleton" | "scoped" | "transient", useFactory: (provider: ServiceProvider) => T): void {
+    if (this.frozen) {
+      throw new Error("Cannot register new services after provider is created");
+    }
+
+    this.register<T>(key, { lifetime, useFactory });
   }
 
   createProvider(): ServiceProvider {
@@ -28,11 +38,7 @@ export class ServiceCollection {
     return new ServiceProvider(FRIEND, this);
   }
 
-  get(key: RegistrationKey<any>): Registration | undefined {
+  get<T>(key: RegistrationKey<T>): Registration<T> | undefined {
     return this.services.get(key);
-  }
-
-  getFactory<T extends RegistrationConstructor<any>>(key: T): RegistrationConstructorParameters<T> | undefined {
-    return this.factories.get(key) as RegistrationConstructorParameters<T> | undefined;
   }
 }
