@@ -11,8 +11,7 @@ export class ServiceProvider {
   private services: ServiceCollection;
   private instances: Map<RegistrationKey<any>, any> = new Map();
   private parentProvider?: ServiceProvider;
-  private resolutionStack: Resolution[] = [];
-  public static currentProvider?: ServiceProvider;
+  private static resolutionStack: Resolution[] = [];
 
   constructor(friend: symbol, services: ServiceCollection, parentProvider?: ServiceProvider) {
     if (friend !== FRIEND) {
@@ -21,17 +20,6 @@ export class ServiceProvider {
 
     this.services = services;
     this.parentProvider = parentProvider;
-  }
-
-  resolve<T>(key: RegistrationKey<T>): T {
-    const previousProvider = ServiceProvider.currentProvider;
-    ServiceProvider.currentProvider = this;
-
-    try {
-      return this.resolveInternal(key);
-    } finally {
-      ServiceProvider.currentProvider = previousProvider;
-    }
   }
 
   seed<T>(key: RegistrationKey<T>, instance: T): void {
@@ -51,42 +39,42 @@ export class ServiceProvider {
     this.instances.set(key, instance);
   }
 
-  protected resolveInternal<T>(key: RegistrationKey<T>): T {
-    if (this.instances.has(key)) {
-      return this.instances.get(key);
-    }
-
+  resolve<T>(key: RegistrationKey<T>): T {
     const registration = this.services.get(key);
     if (!registration) {
       throw new Error(`No registration found for key: ${key.toString()}`);
     }
 
-    if (this.resolutionStack.some(r => r.key === key)) {
-      const cycle = [...this.resolutionStack.map(r => r.key.toString()), key.toString()].join(" -> ");
+    if (ServiceProvider.resolutionStack.some(r => r.key === key)) {
+      const cycle = [...ServiceProvider.resolutionStack.map(r => r.key.toString()), key.toString()].join(" -> ");
       throw new Error(`Circular dependency detected: ${cycle}`);
     }
 
-    const resolutionTop = this.resolutionStack[this.resolutionStack.length - 1];
+    const resolutionTop = ServiceProvider.resolutionStack[ServiceProvider.resolutionStack.length - 1];
 
     if (registration.lifetime === "scoped" && resolutionTop && resolutionTop.registration.lifetime !== "scoped") {
       throw new Error(`Cannot resolve scoped service '${key.toString()}' from a transient or singleton context '${resolutionTop.key.toString()}'`);
     }
 
-    this.resolutionStack.push({ key, registration });
+    ServiceProvider.resolutionStack.push({ key, registration });
 
     try {
       return this.resolveRegistration(key, registration);
     } finally {
-      this.resolutionStack.pop();
+      ServiceProvider.resolutionStack.pop();
     }
   }
 
   private createInstance<T extends RegistrationConstructor<any>>(useClass: T, args: RegistrationKey<any>[]): InstanceType<T> {
-    const factoryArgs = args.map(k => this.resolveInternal(k));
+    const factoryArgs = args.map(k => this.resolve(k));
     return new useClass(...factoryArgs);
   }
 
-  protected resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration<T>): T {
+  private resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration<T>): T {
+    if (this.instances.has(key)) {
+      return this.instances.get(key);
+    }
+
     let instance;
     if (registration.lifetime === "scoped" && "useClass" in registration) {
       instance = this.createInstance(registration.useClass, registration.args || []);
@@ -109,7 +97,7 @@ export class ServiceProvider {
     }
 
     if (this.parentProvider) {
-      return this.parentProvider.resolveInternal(key);
+      return this.parentProvider.resolveRegistration(key, registration);
     } else {
 
       if (registration.lifetime === "value" && "useValue" in registration) {
@@ -140,9 +128,4 @@ export class ServiceProvider {
   createScope(): ServiceProvider {
     return new ServiceProvider(FRIEND, this.services, this);
   }
-}
-
-export function provide<T>(key: RegistrationKey<T>): T {
-  if (!ServiceProvider.currentProvider) throw new Error("No active DI provider in this context");
-  return ServiceProvider.currentProvider.resolve(key);
 }

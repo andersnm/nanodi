@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { provide, ServiceCollection } from '@nanodi/core';
+import { ServiceCollection } from '@nanodi/core';
 
 test('Lifetimes: Singletons are shared, Scoped are unique per scope', async (t) => {
   const services = new ServiceCollection();
@@ -26,14 +26,14 @@ test('Ambient Context: provide() finds the correct scoped instance', async () =>
   class Service {
     id: number;
 
-    constructor(id: number = provide<number>('id')) {
+    constructor(id: number) {
       this.id = id;
     }
   }
 
   const services = new ServiceCollection();
   services.register('id', { lifetime: "scoped", useFactory: () => Math.random() });
-  services.register('service', { lifetime: "scoped", useClass: Service } );
+  services.register('service', { lifetime: "scoped", useClass: Service, args: ['id'] } );
   const root = services.createProvider();
 
   async function work() {
@@ -54,15 +54,15 @@ test('Ambient Context: provide() finds the correct scoped instance', async () =>
 test('Protection: Circular dependencies throw an error', () => {
   const services = new ServiceCollection();
 
-  class A { constructor() { provide('B'); } }
-  class B { constructor() { provide('A'); } }
+  class A { constructor(b: B) { } }
+  class B { constructor(a: A) { } }
 
-  services.register('A', { lifetime: "singleton", useClass: A });
-  services.register('B', { lifetime: "singleton", useClass: B });
+  services.register(A, { lifetime: "singleton", useClass: A, args: [B] });
+  services.register(B, { lifetime: "singleton", useClass: B, args: [A] });
 
   const root = services.createProvider();
 
-  assert.throws(() => root.resolve('A'), /Circular dependency/);
+  assert.throws(() => root.resolve(A), /Circular dependency/);
 });
 
 test('Hierarchy: Scoped provider delegates to parent for singletons', () => {
@@ -82,8 +82,8 @@ test('Factories: Can use provide() inside factory functions', () => {
   const services = new ServiceCollection();
   
   services.register('token', { lifetime: "value", useValue: 'SECRET_123' });
-  services.register('api', { lifetime: "scoped", useFactory: () => {
-    const t = provide<string>('token');
+  services.register('api', { lifetime: "scoped", useFactory: (provider) => {
+    const t = provider.resolve<string>('token');
     return { auth: t };
   }});
 
@@ -127,9 +127,9 @@ test('Captive Dependency: Singleton should not be able to provide Scoped via a s
   });
   services.register("SingletonService", { 
     lifetime: "singleton",
-    useFactory: () => {
+    useFactory: (provider) => {
       return {
-        dependency: provide("ScopedService") 
+        dependency: provider.resolve("ScopedService") 
       };
     } 
   });
@@ -138,8 +138,9 @@ test('Captive Dependency: Singleton should not be able to provide Scoped via a s
     lifetime: "singleton",
     useClass: class {
       s;
-      constructor(s = provide("SingletonService")) { this.s = s; }
-    }
+      constructor(s: any) { this.s = s; }
+    },
+    args: ["SingletonService"]
   });
 
   const root = services.createProvider();
@@ -242,20 +243,20 @@ test('Seed: seeded instance is returned instead of factory/class result', () => 
   const services = new ServiceCollection();
 
   class Example {
-    n;
-    constructor(n = Math.random()) {
+    n: number;
+    constructor(n: number) {
       this.n = n;
     }
   }
 
   services.register("req", { lifetime: "seed" });
 
-  services.registerClass(Example, "scoped");
+  services.registerClass(Example, "scoped", "req");
 
   const root = services.createProvider();
   const scope = root.createScope();
 
-  const seededReq = { id: 123 };
+  const seededReq = 128;
   scope.seed("req", seededReq);
 
   const resolvedReq = scope.resolve<typeof seededReq>("req");
@@ -263,4 +264,5 @@ test('Seed: seeded instance is returned instead of factory/class result', () => 
 
   const handler = scope.resolve(Example);
   assert.ok(handler instanceof Example, "Other scoped services still resolve normally");
+  assert.strictEqual(handler.n, seededReq, "Constructor should receive the seeded value");
 });

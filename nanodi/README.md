@@ -4,7 +4,7 @@ Modern, fast, simple, immutable, synchronous constructor DI container for Node.j
 
 ## Design principles
 - **Synchronous:** Constructors and factories must not perform async work.
-- **Type-bound Injection:** Register constructor argument bindings with `.registerClass()` or `@injectable()` decorator
+- **Typed Injection:** Register typed constructor argument bindings with `.registerClass()` or `@injectable()`
 - **Immutability:** The registration map is frozen once a provider is created.
 - **Shared Composition:** All providers share the same registration map. Scopes cannot override services.
 - **Root Resolution:** Global singletons and values are always resolved and cached in the root provider.
@@ -17,7 +17,7 @@ Modern, fast, simple, immutable, synchronous constructor DI container for Node.j
 
 ```ts
 const services = new ServiceCollection();
-services.register(Database, { lifetime: "singleton", useClass: PostgresDb });
+services.register(Database, { lifetime: "singleton", useClass: PostgresDb, args: [ ConfigKey ] });
 services.register(RequestKey, { lifetime: "seed" });
 
 autobindInjectables(services); // Registers decorated types
@@ -32,7 +32,7 @@ const root = services.createProvider();
 3. Register type and bind type-safe arguments using decorator syntax:
 
 ```ts
-@injectable<typeof UserService>("scoped", inject(Database), inject(RequestKey))
+@injectable("scoped", Database, RequestKey)
 class UserService {
   constructor(private db: Database, private req: express.Request) {}
 
@@ -71,35 +71,29 @@ Injection keys can be symbols. Typed symbols preserve the generic type parameter
 export const RequestKey = registrationSymbol<express.Request>("req");
 ```
 
-## Manual binding
+## Anonymous object types
+
+Typed symbols preserve the shape of anonymous object types. The original type can be "unwrapped" from the symbol key type:
+
+```ts
+const dbConfig = { host: process.env["DB_HOST"], port: process.env["DB_PORT"], };
+const ConfigKey = registrationSymbol<typeof dbConfig>("dbConfig");
+services.register(ConfigKey, { lifetime: "value", useValue: dbConfig });
+
+// Type of "value": { host, port }
+let value: RegistrationSymbolType<typeof ConfigKey> = provider.resolve(ConfigKey);
+```
+
+## Manual class binding
 
 Decorators-based auto-binding via `@injectable()` uses `.registerClass()` under the hood which supports type-checking against the constructor parameters:
 
 ```ts
-services.registerClass(UserService, "scoped", inject(DataBase), inject(RequestKey));
+services.registerClass(UserService, "scoped", Database, RequestKey);
 
 // Equivalent to:
-// @injectable("scoped", inject(Database), inject(RequestKey))
+// @injectable("scoped", Database, RequestKey)
 // class UserService { ... }
-```
-
-## Global fallback injection
-
-It is possible to inject constructor parameters using the global `provide()` function as  a default argument. This creates a tight coupling between the service classes and the service provider and is not recommended.
-
-```ts
-class UserService {
-  constructor(
-    private db: Database = provide(Database),
-    private req: express.Request = provide(RequestKey)) {}
-
-  async getUser(id: number) {
-    if (!this.req.user) {
-      throw new Error("Unauthenticated");
-    }
-    return await this.db.getUser(id);
-  }
-}
 ```
 
 ## Resolution logic and order
