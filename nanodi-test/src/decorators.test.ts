@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ServiceCollection, injectable, inject, autobindInjectables, clearInjectables } from '@nanodi/core';
+import { ServiceCollection, injectable, autobindInjectables, clearInjectables, registrationSymbol } from '@nanodi/core';
 
 test('Constructor injection resolves dependencies in correct order', () => {
   clearInjectables();
@@ -12,7 +12,7 @@ test('Constructor injection resolves dependencies in correct order', () => {
   @injectable("transient")
   class B { value; constructor() { this.value = 42; } }
 
-  @injectable("transient", inject(A), inject(B))
+  @injectable("transient", A, B)
   class My {
     a: A;
     b: B;
@@ -68,4 +68,54 @@ test('Transient services return new instances', () => {
   const a2 = provider.resolve(A);
 
   assert.notEqual(a1, a2);
+});
+
+test('injectable.key overrides the injection key', () => {
+  clearInjectables();
+
+  const AKey = registrationSymbol("A");
+
+  @injectable("singleton")
+  @injectable.key(AKey)
+  class A {
+    value = 123;
+  }
+
+  const collection = new ServiceCollection();
+  autobindInjectables(collection);
+
+  const provider = collection.createProvider();
+  const instance = provider.resolve(AKey);
+
+  assert.ok(instance instanceof A);
+  assert.equal(instance.value, 123);
+});
+
+test('injectable.key works together with constructor injection', () => {
+  clearInjectables();
+
+  const AKey = registrationSymbol("A");
+
+  @injectable("transient")
+  @injectable.key(AKey)
+  class A {
+    id = 999;
+  }
+
+  @injectable("transient", AKey)
+  class B {
+    a: A;
+    constructor(a: A) {
+      this.a = a;
+    }
+  }
+
+  const collection = new ServiceCollection();
+  autobindInjectables(collection);
+
+  const provider = collection.createProvider();
+  const instance = provider.resolve(B);
+
+  assert.ok(instance.a instanceof A);
+  assert.equal(instance.a.id, 999);
 });

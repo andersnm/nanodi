@@ -89,7 +89,7 @@ let value: RegistrationSymbolType<typeof ConfigKey> = provider.resolve(ConfigKey
 Decorators-based auto-binding via `@injectable()` uses `.registerClass()` under the hood which supports type-checking against the constructor parameters:
 
 ```ts
-services.registerClass(UserService, "scoped", Database, RequestKey);
+services.registerClass(UserService, "scoped", UserService, Database, RequestKey);
 
 // Equivalent to:
 // @injectable("scoped", Database, RequestKey)
@@ -117,7 +117,7 @@ The container used to define your dependencies before the application starts.
     * `key`: A `string`, `Symbol`, or a `Class`.
     * `registration`: An object defining the lifetime strategy.
     * *Throws:* If called after a provider has been created (frozen).
-* **`registerClass<T>(useClass: T, lifetime: ClassLifetime, args: RegistrationConstructorParameters<T>)`**: Adds a class-based service to the collection with type-checked constructor arguments.
+* **`registerClass<T>(key: RegistrationKey<T>, lifetime: ClassLifetime, useClass: RegistrationConstructor<T>, args: RegistrationConstructorParameters<T>)`**: Adds a class-based service to the collection with type-checked constructor arguments.
 * **`registerFactory<T>(key: RegistrationKey<T>, lifetime: FactoryLifetime, useFactory: (serviceProvider: ServiceProvider) => T)`**: Adds a factory-based service to the collection.
 * **`createProvider()`**: Freezes the collection and returns the root `ServiceProvider`.
 
@@ -132,12 +132,23 @@ The engine that resolves and caches instances.
 
 ---
 
+### Class Decorators
+
+#### `@injectable<T>(lifetime: ClassLifetime, ...args: RegistrationConstructorParameters<T>)`
+Marks class for auto-binding via `autobindInjectables()`.
+
+#### `@injectable.key<T>(key: RegistrationKey<T>)`
+Specifies the injection key used to reference the class.
+
+---
+
 ### Global Functions
 
-#### `provide<T>(key: RegistrationKey<T>): T`
-Resolves an instance inside constructors or functions within an active scope.
-* **Context:** Must be called during the execution flow of a `resolve()` call.
-* **Usage:** Best used as a default constructor argument.
+#### `autobindInjectables(collection: ServiceCollection)`
+Registers all classes decorated with `@injectable()` in the `collection`.
+
+#### `clearInjectables()`
+Frees global metadata used for auto-binding.
 
 #### `registrationSymbol<T>(name: string): RegistrationSymbol<T>`
 Helper function to create a new registration key `Symbol` instance associated with the instance type.

@@ -251,7 +251,7 @@ test('Seed: seeded instance is returned instead of factory/class result', () => 
 
   services.register("req", { lifetime: "seed" });
 
-  services.registerClass(Example, "scoped", "req");
+  services.registerClass(Example, "scoped", Example, "req");
 
   const root = services.createProvider();
   const scope = root.createScope();

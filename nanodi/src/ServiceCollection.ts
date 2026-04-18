@@ -16,12 +16,12 @@ export class ServiceCollection {
   }
 
   /** Register a service class with typed constructor bindings. */
-  registerClass<T extends RegistrationConstructor<any>>(useClass: T, lifetime: "singleton" | "scoped" | "transient", ...args: RegistrationConstructorParameters<T>): void {
+  registerClass<T extends RegistrationConstructor<any>>(key: RegistrationKey<InstanceType<T>>, lifetime: "singleton" | "scoped" | "transient", useClass: T, ...args: RegistrationConstructorParameters<T>): void {
     if (this.frozen) {
       throw new Error("Cannot register new services after provider is created");
     }
 
-    this.register<T>(useClass, { lifetime, useClass, args });
+    this.register<InstanceType<T>>(key, { lifetime, useClass, args });
   }
 
   /** Register a service instantiated by factory callback. */

@@ -118,9 +118,9 @@ describe("ServiceCollection.bind()", () => {
       }
     }
 
-    sc.registerClass(A, "transient");
-    sc.registerClass(B, "transient", A);
-    sc.registerClass(C, "transient", A, B);
+    sc.registerClass(A, "transient", A);
+    sc.registerClass(B, "transient", B, A);
+    sc.registerClass(C, "transient", C, A, B);
 
     const provider = sc.createProvider();
     const c = provider.resolve(C);
