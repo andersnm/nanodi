@@ -1,9 +1,9 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import test from "node:test";
+import assert from "node:assert/strict";
 
-import { ServiceCollection, injectable, autobindInjectables, clearInjectables, registrationSymbol } from '@nanodi/core';
+import { ServiceCollection, injectable, autobindInjectables, clearInjectables, registrationSymbol } from "@nanodi/core";
 
-test('Constructor injection resolves dependencies in correct order', () => {
+test("Constructor injection resolves dependencies in correct order", () => {
   clearInjectables();
 
   @injectable("transient")
@@ -34,7 +34,7 @@ test('Constructor injection resolves dependencies in correct order', () => {
   assert.equal(instance.b.value, 42);
 });
 
-test('Singleton services return the same instance', () => {
+test("Singleton services return the same instance", () => {
   clearInjectables();
 
   @injectable("singleton")
@@ -52,7 +52,7 @@ test('Singleton services return the same instance', () => {
   assert.equal(a1, a2);
 });
 
-test('Transient services return new instances', () => {
+test("Transient services return new instances", () => {
   clearInjectables();
 
   @injectable("transient")
@@ -70,7 +70,7 @@ test('Transient services return new instances', () => {
   assert.notEqual(a1, a2);
 });
 
-test('injectable.key overrides the injection key', () => {
+test("injectable.key overrides the injection key", () => {
   clearInjectables();
 
   const AKey = registrationSymbol("A");
@@ -91,7 +91,7 @@ test('injectable.key overrides the injection key', () => {
   assert.equal(instance.value, 123);
 });
 
-test('injectable.key works together with constructor injection', () => {
+test("injectable.key works together with constructor injection", () => {
   clearInjectables();
 
   const AKey = registrationSymbol("A");

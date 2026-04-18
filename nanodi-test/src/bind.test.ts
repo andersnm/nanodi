@@ -12,30 +12,40 @@ describe("ServiceCollection.bind()", () => {
       }
     }
 
-    sc.register(A, { lifetime: "transient", useClass: A, args: [A] });
+    sc.registerValue("a", "test");
+    sc.registerClass(A, "transient", A, "a");
 
     const factory = sc.get(A) as RegistrationClass<A>;
     assert.ok(factory);
-    assert.deepStrictEqual(factory.args, [A]);
+    assert.deepStrictEqual(factory.args, ["a"]);
   });
 
   test("allows multiple binds for different constructors", () => {
     const sc = new ServiceCollection();
 
     class A {
-      constructor(v: any) {}
+      a;
+      constructor(b: B) {
+        this.a = 0;
+      }
     }
 
     class B {
-      constructor(v: any) {}
+      b;
+      constructor(c: C) {
+        this.b = 1;
+      }
     }
 
     class C {
-      constructor(v: any) {}
+      c;
+      constructor(v: any) {
+        this.c = 2;
+      }
     }
 
-    sc.register(A, { lifetime: "transient", useClass: A, args: [B] });
-    sc.register(B, { lifetime: "transient", useClass: B, args: [C] });
+    sc.registerClass(A, "transient", A, B);
+    sc.registerClass(B, "transient", B, C);
 
     const factoryA = sc.get(A) as RegistrationClass<A>;
     const factoryB = sc.get(B) as RegistrationClass<B>;
@@ -55,7 +65,7 @@ describe("ServiceCollection.bind()", () => {
     sc.createProvider(); // freezes collection
 
     assert.throws(() => {
-      sc.register(A, { lifetime: "transient", useClass: A, args: [] });
+      sc.registerClass(A, "transient", A);
     }, /Cannot register new services after provider is created/);
   });
 
@@ -71,13 +81,13 @@ describe("ServiceCollection.bind()", () => {
 
     class B {
       a;
-      constructor(a: any) {
+      constructor(a: A) {
         this.a = a;
       }
     }
 
-    sc.register(A, { lifetime: "transient", useClass: A });
-    sc.register(B, { lifetime: "transient", useClass: B, args: [A] });
+    sc.registerClass(A, "transient", A);
+    sc.registerClass(B, "transient", B, A);
 
     const provider = sc.createProvider();
 

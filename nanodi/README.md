@@ -1,6 +1,6 @@
 # nanodi
 
-Modern, fast, simple, immutable, synchronous constructor DI container for Node.js and browsers. Manual bindings or auto-registration with official ECMAScript decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
+Modern, fast, type-safe, immutable DI container for Node.js and browsers. Synchronous constructor injection with manual bindings or auto-registration using official ECMAScript decorators. Supports constants, singletons, scoped singletons and transients. Rhymes with "melody".
 
 ## Design principles
 - **Synchronous:** Constructors and factories must not perform async work.
@@ -17,10 +17,10 @@ Modern, fast, simple, immutable, synchronous constructor DI container for Node.j
 
 ```ts
 const services = new ServiceCollection();
-services.register(Database, { lifetime: "singleton", useClass: PostgresDb, args: [ ConfigKey ] });
-services.register(RequestKey, { lifetime: "seed" });
+services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
+services.registerSeed(RequestKey);
 
-autobindInjectables(services); // Registers decorated types
+autobindInjectables(services); // Registers decorated classes
 ```
 
 2. Create the root provider:
@@ -78,7 +78,7 @@ Typed symbols preserve the shape of anonymous object types. The original type ca
 ```ts
 const dbConfig = { host: process.env["DB_HOST"], port: process.env["DB_PORT"], };
 const ConfigKey = registrationSymbol<typeof dbConfig>("dbConfig");
-services.register(ConfigKey, { lifetime: "value", useValue: dbConfig });
+services.registerValue(ConfigKey, dbConfig);
 
 // Type of "value": { host, port }
 let value: RegistrationSymbolType<typeof ConfigKey> = provider.resolve(ConfigKey);
@@ -89,11 +89,12 @@ let value: RegistrationSymbolType<typeof ConfigKey> = provider.resolve(ConfigKey
 Decorators-based auto-binding via `@injectable()` uses `.registerClass()` under the hood which supports type-checking against the constructor parameters:
 
 ```ts
-services.registerClass(UserService, "scoped", UserService, Database, RequestKey);
+services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
 
 // Equivalent to:
-// @injectable("scoped", Database, RequestKey)
-// class UserService { ... }
+// @injectable("singleton", ConfigKey)
+// @injectable.key(Database)
+// class PostgresDb extends Database { ... }
 ```
 
 ## Resolution logic and order
@@ -113,12 +114,29 @@ services.registerClass(UserService, "scoped", UserService, Database, RequestKey)
 ### `ServiceCollection`
 The container used to define your dependencies before the application starts.
 
-* **`register(key: RegistrationKey<T>, registration: Registration)`**: Adds a service to the collection.
-    * `key`: A `string`, `Symbol`, or a `Class`.
-    * `registration`: An object defining the lifetime strategy.
+* **`register<T>(key, registration)`**: Adds a service to the collection. Low-level utility. Prefer using the `register*`-helper functions for improved typing.
+    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+    * `registration: Registration<T>`: An object defining the lifetime strategy.
     * *Throws:* If called after a provider has been created (frozen).
-* **`registerClass<T>(key: RegistrationKey<T>, lifetime: ClassLifetime, useClass: RegistrationConstructor<T>, args: RegistrationConstructorParameters<T>)`**: Adds a class-based service to the collection with type-checked constructor arguments.
-* **`registerFactory<T>(key: RegistrationKey<T>, lifetime: FactoryLifetime, useFactory: (serviceProvider: ServiceProvider) => T)`**: Adds a factory-based service to the collection.
+
+* **`registerValue<T>(key, value)`**: Adds a constant value as a service.
+    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+    * `value: T`: The value to set.
+
+* **`registerClass<T>(key, lifetime, useClass, ...args)`**: Adds a class-based service to the collection with type-checked constructor arguments.
+    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+    * `lifetime: ClassLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
+    * `useClass: RegistrationConstructor<T>`: The class to construct from.
+    * `...args: RegistrationConstructorParameters<T>`: Constructor arguments.
+
+* **`registerFactory<T>(key, lifetime, useFactory)`**: Adds a factory-based service to the collection.
+    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+    * `lifetime: FactoryLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
+    * `useFactory: (serviceProvider: ServiceProvider) => T`: The factory callback.
+
+* **`registerSeed<T>(key)`**: Adds a seed service placeholder.
+    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+
 * **`createProvider()`**: Freezes the collection and returns the root `ServiceProvider`.
 
 ---
@@ -155,7 +173,7 @@ Helper function to create a new registration key `Symbol` instance associated wi
 
 ---
 
-#### `RegistrationKey<T>` type
+### `RegistrationKey<T>` type
 
 Defined as `string | RegistrationSymbol<T> | RegistrationConstructor<T>`, where `RegistrationSymbol<T>` is a `symbol` and `RegistrationConstructor<T>` is `new (...args: any[]) => T`.
 
@@ -187,32 +205,27 @@ Describes a service type and its lifetime strategy.
 
 #### Value
 ```ts
-services.register("config", {
-  lifetime: "value",
-  useValue: { port: 3000 }
-});
+const dbConfig = { host: process.env["DB_HOST"], port: process.env["DB_PORT"], };
+
+services.registerValue(ConfigKey, dbConfig);
 ```
 
 #### Singleton class
 ```ts
-services.register(Database, {
-  lifetime: "singleton",
-  useClass: PostgresDb
-});
+services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
 ```
 
 #### Scoped factory
 ```ts
-services.register(RequestId, {
-  lifetime: "scoped",
-  useFactory: () => crypto.randomUUID()
-});
+services.registerFactory(RequestId, "scoped", () => crypto.randomUUID());
 ```
 
 #### Transient class
 ```ts
-services.register(Logger, {
-  lifetime: "transient",
-  useClass: Logger
-});
+services.registerClass(Logger, "transient", Logger);
+```
+
+#### Scoped seed value
+```ts
+services.registerSeed(RequestKey);
 ```

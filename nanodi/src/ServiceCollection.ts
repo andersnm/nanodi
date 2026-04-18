@@ -15,22 +15,22 @@ export class ServiceCollection {
     this.services.set(key, registration);
   }
 
+  registerValue<T>(key: RegistrationKey<T>, value: T): void {
+    this.register<T>(key, { lifetime: "value", useValue: value });
+  }
+
   /** Register a service class with typed constructor bindings. */
   registerClass<T extends RegistrationConstructor<any>>(key: RegistrationKey<InstanceType<T>>, lifetime: "singleton" | "scoped" | "transient", useClass: T, ...args: RegistrationConstructorParameters<T>): void {
-    if (this.frozen) {
-      throw new Error("Cannot register new services after provider is created");
-    }
-
     this.register<InstanceType<T>>(key, { lifetime, useClass, args });
   }
 
   /** Register a service instantiated by factory callback. */
   registerFactory<T>(key: RegistrationKey<T>, lifetime: "singleton" | "scoped" | "transient", useFactory: (provider: ServiceProvider) => T): void {
-    if (this.frozen) {
-      throw new Error("Cannot register new services after provider is created");
-    }
-
     this.register<T>(key, { lifetime, useFactory });
+  }
+
+  registerSeed<T>(key: RegistrationKey<T>): void {
+    this.register(key, { lifetime: "seed" });
   }
 
   createProvider(): ServiceProvider {
