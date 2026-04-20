@@ -1,5 +1,5 @@
 import { FRIEND } from "./friend.js";
-import { Registration, RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
+import { Registration, RegistrationClass, RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
 import { ServiceProvider } from "./ServiceProvider.js";
 
 export class ServiceCollection {
@@ -40,5 +40,19 @@ export class ServiceCollection {
 
   get<T>(key: RegistrationKey<T>): Registration<T> | undefined {
     return this.services.get(key);
+  }
+
+  getByMetadata(metadataKey: string | symbol): RegistrationClass<any>[] {
+    const registrations: RegistrationClass<any>[] = [];
+    for (const registration of this.services.values()) {
+      if ("useClass" in registration) {
+        const meta = registration.useClass[Symbol.metadata];
+        if (meta && metadataKey in meta) {
+          registrations.push(registration);
+        }
+      }
+    }
+
+    return registrations;
   }
 }

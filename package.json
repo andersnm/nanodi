@@ -3,6 +3,8 @@
   "private": true,
   "workspaces": [
     "nanodi",
+    "nanodi-express",
+    "nanodi-express-demo",
     "nanodi-test"
   ],
   "scripts": {

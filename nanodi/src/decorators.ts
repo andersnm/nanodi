@@ -60,3 +60,13 @@ export function autobindInjectables(collection: ServiceCollection, useClasses: R
     collection.registerClass(key, registration.lifetime, useClass, ...registration.args || []);
   }
 }
+
+export function getInjectableClassKey(useClass: RegistrationConstructor<any>): RegistrationKey<any> {
+  const metadata = useClass[Symbol.metadata];
+  if (!metadata) {
+    throw new Error(`No @injectable metadata found for class: ${useClass.name}`);
+  }
+
+  const injectableKey = metadata["nanodi:injectable.key"] as RegistrationKey<any>;
+  return injectableKey || useClass;
+}
