@@ -20,7 +20,7 @@ const services = new ServiceCollection();
 services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
 services.registerSeed(RequestKey);
 
-autobindInjectables(services); // Registers decorated classes
+autobindInjectables(services, [ PostgresDb, UserService ]);
 ```
 
 2. Create the root provider:
@@ -114,62 +114,98 @@ services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
 ### `ServiceCollection`
 The container used to define your dependencies before the application starts.
 
-* **`register<T>(key, registration)`**: Adds a service to the collection. Low-level utility. Prefer using the `register*`-helper functions for improved typing.
+* **`register<T>(key, registration)`**
+
+  Adds a service to the collection. Low-level utility. Prefer using the `register*`-helper functions for improved typing.
+
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `registration: Registration<T>`: An object defining the lifetime strategy.
     * *Throws:* If called after a provider has been created (frozen).
 
-* **`registerValue<T>(key, value)`**: Adds a constant value as a service.
+* **`registerValue<T>(key, value)`**
+
+  Adds a constant value as a service.
+
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `value: T`: The value to set.
 
-* **`registerClass<T>(key, lifetime, useClass, ...args)`**: Adds a class-based service to the collection with type-checked constructor arguments.
+* **`registerClass<T>(key, lifetime, useClass, ...args)`**
+
+  Adds a class-based service to the collection with type-checked constructor arguments.
+
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `lifetime: ClassLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
     * `useClass: RegistrationConstructor<T>`: The class to construct from.
     * `...args: RegistrationConstructorParameters<T>`: Constructor arguments.
 
-* **`registerFactory<T>(key, lifetime, useFactory)`**: Adds a factory-based service to the collection.
+* **`registerFactory<T>(key, lifetime, useFactory)`**
+
+  Adds a factory-based service to the collection.
+
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `lifetime: FactoryLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
     * `useFactory: (serviceProvider: ServiceProvider) => T`: The factory callback.
 
-* **`registerSeed<T>(key)`**: Adds a seed service placeholder.
+* **`registerSeed<T>(key)`**
+
+  Adds a seed service placeholder.
+
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
 
-* **`createProvider()`**: Freezes the collection and returns the root `ServiceProvider`.
+* **`createProvider()`**
+
+  Freezes the collection and returns the root `ServiceProvider`.
 
 ---
 
 ### `ServiceProvider`
 The engine that resolves and caches instances.
 
-* **`resolve<T>(key: RegistrationKey<T>)`**: Returns the instance associated with the key. If the instance doesn't exist yet, it is created based on its registration strategy.
-* **`createScope()`**: Creates a child `ServiceProvider`. This child shares the same service registrations but maintains its own cache for **Scoped** services.
-* **`seed<T>(key: RegistrationKey<T>, instance: T)`**: Registers the instance in the current provider cache. The key must have lifetime "seed".
+* **`resolve<T>(key: RegistrationKey<T>)`**
+
+  Returns the instance associated with the key. If the instance doesn't exist yet, it is created based on its registration strategy.
+
+* **`createScope()`**: Creates a child `ServiceProvider`.
+
+  This child shares the same service registrations but maintains its own cache for **Scoped** services.
+
+* **`seed<T>(key: RegistrationKey<T>, instance: T)`**
+
+   Registers the instance in the current provider cache. The key must have lifetime "seed".
 
 ---
 
 ### Class Decorators
 
-#### `@injectable<T>(lifetime: ClassLifetime, ...args: RegistrationConstructorParameters<T>)`
-Marks class for auto-binding via `autobindInjectables()`.
+* **`@injectable<T>(lifetime: ClassLifetime, ...args: RegistrationConstructorParameters<T>)`**
 
-#### `@injectable.key<T>(key: RegistrationKey<T>)`
-Specifies the injection key used to reference the class.
+  Specifies injection lifetime and bindings for `autobindInjectables()`.
+
+* **`@injectable.key<T>(key: RegistrationKey<T>)`**
+
+  Specifies the injection key used to reference the class.
 
 ---
 
 ### Global Functions
 
-#### `autobindInjectables(collection: ServiceCollection)`
-Registers all classes decorated with `@injectable()` in the `collection`.
+* **`autobindInjectables(collection, useClasses)`**
 
-#### `clearInjectables()`
-Frees global metadata used for auto-binding.
+  Takes an array of classes decorated with `@injectable()` and registers them in the `collection`.
 
-#### `registrationSymbol<T>(name: string): RegistrationSymbol<T>`
-Helper function to create a new registration key `Symbol` instance associated with the instance type.
+  In Javascript there is no good way to "enumerate decorated classes" without massive drawbacks:
+
+    - Tree shaking: Decorators only run for classes that are actually `import`ed. However, modern bundlers will happily strip out `import`s without explicit references.
+    - Potential leaks: Using a global registry can prevent classes from being garbage collected.
+    - Global pollution: Using a global registry makes it impossible to run multiple independent DI containers.
+
+  * `collection: ServiceCollection`: The collection where the classes will be registered.
+  * `useClasses: RegistrationConstructor<any>[]`: An array of decorated classes to register.
+  * *Throws:* If any class was not decorated with @injectable().
+
+* **`registrationSymbol<T>(name: string): RegistrationSymbol<T>`**
+
+  Helper function to create a new registration key `Symbol` instance associated with the instance type.
 
 ---
 

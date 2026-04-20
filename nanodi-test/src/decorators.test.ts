@@ -1,10 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ServiceCollection, injectable, autobindInjectables, clearInjectables, registrationSymbol } from "@nanodi/core";
+import { ServiceCollection, injectable, autobindInjectables, registrationSymbol } from "@nanodi/core";
 
 test("Constructor injection resolves dependencies in correct order", () => {
-  clearInjectables();
 
   @injectable("transient")
   class A { id; constructor() { this.id = Math.random(); } }
@@ -24,7 +23,7 @@ test("Constructor injection resolves dependencies in correct order", () => {
 
   const collection = new ServiceCollection();
 
-  autobindInjectables(collection);
+  autobindInjectables(collection, [A, B, My]);
 
   const provider = collection.createProvider();
   const instance = provider.resolve(My);
@@ -35,14 +34,12 @@ test("Constructor injection resolves dependencies in correct order", () => {
 });
 
 test("Singleton services return the same instance", () => {
-  clearInjectables();
-
   @injectable("singleton")
   class A {}
 
   const collection = new ServiceCollection();
 
-  autobindInjectables(collection);
+  autobindInjectables(collection, [A]);
 
   const provider = collection.createProvider();
 
@@ -53,14 +50,12 @@ test("Singleton services return the same instance", () => {
 });
 
 test("Transient services return new instances", () => {
-  clearInjectables();
-
   @injectable("transient")
   class A {}
 
   const collection = new ServiceCollection();
 
-  autobindInjectables(collection);
+  autobindInjectables(collection, [A]);
 
   const provider = collection.createProvider();
 
@@ -71,8 +66,6 @@ test("Transient services return new instances", () => {
 });
 
 test("injectable.key overrides the injection key", () => {
-  clearInjectables();
-
   const AKey = registrationSymbol("A");
 
   @injectable("singleton")
@@ -82,7 +75,7 @@ test("injectable.key overrides the injection key", () => {
   }
 
   const collection = new ServiceCollection();
-  autobindInjectables(collection);
+  autobindInjectables(collection, [A]);
 
   const provider = collection.createProvider();
   const instance = provider.resolve(AKey);
@@ -92,8 +85,6 @@ test("injectable.key overrides the injection key", () => {
 });
 
 test("injectable.key works together with constructor injection", () => {
-  clearInjectables();
-
   const AKey = registrationSymbol("A");
 
   @injectable("transient")
@@ -111,7 +102,7 @@ test("injectable.key works together with constructor injection", () => {
   }
 
   const collection = new ServiceCollection();
-  autobindInjectables(collection);
+  autobindInjectables(collection, [A, B]);
 
   const provider = collection.createProvider();
   const instance = provider.resolve(B);
