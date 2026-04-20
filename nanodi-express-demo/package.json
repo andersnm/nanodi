@@ -1,0 +1,23 @@
+{
+  "name": "nanodi-express-demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
+    "test:dist": "node --enable-source-maps --test \"dist/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@nanodi/core": "*",
+    "@nanodi/express": "*",
+    "express": "^4.18.2",
+    "zod": "^4.3.6"
+  }
+}

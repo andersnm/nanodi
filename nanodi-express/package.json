@@ -1,0 +1,39 @@
+{
+  "name": "@nanodi/express",
+  "version": "0.0.9",
+  "private": false,
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "source": "./src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/andersnm/nanodi",
+  "repository": "https://github.com/andersnm/nanodi",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/esm/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:license",
+    "build:esm": "tsc -p tsconfig.esm.json && npm run build:package-esm",
+    "build:cjs": "tsc -p tsconfig.cjs.json && npm run build:package-cjs",
+    "build:package-esm": "node build/copyfile.mjs build/package.esm.json dist/esm/package.json",
+    "build:package-cjs": "node build/copyfile.mjs build/package.cjs.json dist/cjs/package.json",
+    "build:license": "node build/copyfile.mjs ../LICENSE LICENSE"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^18.11.18"
+  },
+  "dependencies": {
+    "@nanodi/core": "*"
+  },
+  "peerDependencies": {
+    "express": "*"
+  }
+}
