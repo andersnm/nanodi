@@ -1,6 +1,6 @@
 {
   "name": "@nanodi/express",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "private": false,
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -31,7 +31,7 @@
     "@types/node": "^18.11.18"
   },
   "dependencies": {
-    "@nanodi/core": "*"
+    "@nanodi/core": "^0.1.0"
   },
   "peerDependencies": {
     "express": "*"
