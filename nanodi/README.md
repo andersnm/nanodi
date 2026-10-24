@@ -121,6 +121,7 @@ The container used to define your dependencies before the application starts.
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `registration: Registration<T>`: An object defining the lifetime strategy.
     * *Throws:* If called after a provider has been created (frozen).
+    * *Throws:* If the key is already registered. Applies to all `register*`-helpers and `autobindInjectables()`.
 
 * **`registerValue<T>(key, value)`**
 

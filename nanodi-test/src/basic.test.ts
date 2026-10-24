@@ -339,3 +339,17 @@ test("Abstract Key: Abstract class can be used as key and dependency", () => {
   assert.ok(db instanceof PostgresDb);
   assert.strictEqual(root.resolve(UserService).db, db);
 });
+
+test("Duplicates: Registering the same key twice throws", () => {
+  const services = new ServiceCollection();
+  class Service {}
+
+  services.registerClass(Service, "singleton", Service);
+  assert.throws(() => services.registerClass(Service, "scoped", Service), /Service already registered for key/);
+
+  services.registerValue("config", 1);
+  assert.throws(() => services.registerFactory("config", "singleton", () => 2), /Service already registered for key: config/);
+
+  const root = services.createProvider();
+  assert.strictEqual(root.resolve("config"), 1, "First registration is kept");
+});

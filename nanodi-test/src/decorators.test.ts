@@ -131,3 +131,12 @@ test("injectable.key accepts an abstract class", () => {
   assert.ok(instance instanceof PostgresDb);
   assert.equal(instance.query(), "pg");
 });
+
+test("autobindInjectables throws when a class is listed twice", () => {
+  @injectable("singleton")
+  class A {}
+
+  const collection = new ServiceCollection();
+
+  assert.throws(() => autobindInjectables(collection, [A, A]), /Service already registered for key/);
+});

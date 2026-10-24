@@ -12,6 +12,10 @@ export class ServiceCollection {
       throw new Error("Cannot register new services after provider is created");
     }
 
+    if (this.services.has(key)) {
+      throw new Error(`Service already registered for key: ${key.toString()}`);
+    }
+
     this.services.set(key, registration);
   }
 
