@@ -3,6 +3,7 @@ import { autobindInjectables, ServiceCollection } from "@nanodi/core";
 import { autobindInjectableControllers, RequestKey, requestScopeMiddleware, ResponseKey } from "@nanodi/express";
 import { HelloController } from "./HelloController.js";
 import { defaultErrorHandler, zodErrorHandler } from "./middlewares.js";
+import { ExpressServer, runProcess } from "./ExpressServer.js";
 
 async function main() {
   const services = new ServiceCollection();
@@ -21,9 +22,14 @@ async function main() {
   app.use(zodErrorHandler());
   app.use(defaultErrorHandler());
 
-  app.listen(3000, () => {
-    console.log("Server is running on http://localhost:3000");
-  });
+  const server = new ExpressServer(app);
+  await server.start(3000);
+  console.log("Server is running on http://localhost:3000");
+
+  await runProcess();
+
+  await server.stop();
+  await provider[Symbol.asyncDispose]();
 }
 
 main().catch(err => {

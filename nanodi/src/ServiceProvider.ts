@@ -1,17 +1,19 @@
 import { FRIEND } from "./friend.js";
 import { Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
 import { ServiceCollection } from "./ServiceCollection.js";
+import { ServiceDisposer } from "./ServiceDisposer.js";
 
 interface Resolution {
   key: RegistrationKey<any>;
   registration: Registration<any>;
 }
 
-export class ServiceProvider {
+export class ServiceProvider implements AsyncDisposable {
   private services: ServiceCollection;
   private instances: Map<RegistrationKey<any>, any> = new Map();
   private parentProvider?: ServiceProvider;
   private resolutionStack: Resolution[];
+  private disposer: ServiceDisposer;
 
   constructor(friend: symbol, services: ServiceCollection, parentProvider?: ServiceProvider) {
     if (friend !== FRIEND) {
@@ -21,9 +23,14 @@ export class ServiceProvider {
     this.services = services;
     this.parentProvider = parentProvider;
     this.resolutionStack = parentProvider ? parentProvider.resolutionStack : [];
+    this.disposer = new ServiceDisposer(parentProvider?.disposer);
   }
 
   seed<T>(key: RegistrationKey<T>, instance: T): void {
+    if (this.disposer.state === "disposed") {
+      throw new Error("Cannot use a disposed provider");
+    }
+
     const registration = this.services.get(key);
     if (!registration) {
       throw new Error(`No registration found for key: ${key.toString()}`);
@@ -45,6 +52,10 @@ export class ServiceProvider {
   }
 
   resolve<T>(key: RegistrationKey<T>): T {
+    if (this.disposer.state === "disposed") {
+      throw new Error("Cannot use a disposed provider");
+    }
+
     const registration = this.services.get(key);
     if (!registration) {
       throw new Error(`No registration found for key: ${key.toString()}`);
@@ -89,12 +100,14 @@ export class ServiceProvider {
     if (registration.lifetime === "scoped" && "useClass" in registration) {
       instance = this.createInstance(registration.useClass, registration.args || []);
       this.instances.set(key, instance);
+      this.disposer.track(instance);
       return instance;
     }
 
     if (registration.lifetime === "scoped" && "useFactory" in registration) {
       instance = registration.useFactory(this);
       this.instances.set(key, instance);
+      this.disposer.track(instance);
       return instance;
     }
 
@@ -118,12 +131,14 @@ export class ServiceProvider {
       if (registration.lifetime === "singleton" && "useClass" in registration) {
         instance = this.createInstance(registration.useClass, registration.args || []);
         this.instances.set(key, instance);
+        this.disposer.track(instance);
         return instance;
       }
 
       if (registration.lifetime === "singleton" && "useFactory" in registration) {
         instance = registration.useFactory(this);
         this.instances.set(key, instance);
+        this.disposer.track(instance);
         return instance;
       }
 
@@ -136,6 +151,27 @@ export class ServiceProvider {
   }
 
   createScope(): ServiceProvider {
+    if (this.disposer.state !== "active") {
+      throw new Error("Cannot create scope from a disposing or disposed provider");
+    }
+
     return new ServiceProvider(FRIEND, this.services, this);
+  }
+
+  /** Prevents this provider from completing disposal until the returned hold is disposed. */
+  retain(): AsyncDisposable {
+    if (this.disposer.state !== "active") {
+      throw new Error("Cannot retain a disposing or disposed provider");
+    }
+
+    return new ServiceDisposer(this.disposer);
+  }
+
+  /**
+   * Waits for all scopes created from this provider to be disposed, then disposes owned instances in reverse creation order.
+   * Never resolves while a scope is not disposed. Repeated calls return the same promise.
+   */
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.disposer[Symbol.asyncDispose]();
   }
 }

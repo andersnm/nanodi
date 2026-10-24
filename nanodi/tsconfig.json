@@ -3,7 +3,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "types": [ "node" ],
-    "lib": [ "ES2020", "ESNext.Decorators" ]
+    "lib": [ "ES2020", "ES2021.Promise", "ESNext.Decorators", "ESNext.Disposable" ]
   },
   "include": [
     "src/**/*"

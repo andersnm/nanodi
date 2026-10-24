@@ -17,8 +17,14 @@ export const zodErrorHandler = (): express.ErrorRequestHandler => {
 export const defaultErrorHandler = (): express.ErrorRequestHandler => {
   return (err, req, res, next) => {
     console.error("Error:", err);
-    res.status(err.status || 500).json({
-      error: err.message || "Internal Server Error",
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    const status = err.status || 500;
+    res.status(status).json({
+      error: status < 500 && err.message ? err.message : "Internal Server Error",
     });
   };
 };

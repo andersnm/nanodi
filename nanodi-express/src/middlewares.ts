@@ -3,8 +3,19 @@ import { RegistrationKey, ServiceProvider } from "@nanodi/core";
 import { RequestKey, ResponseKey } from "./symbols.js";
 import { Controller } from "./Controller.js";
 
-// app.use() this before any routes
-export function requestScopeMiddleware(provider: ServiceProvider): express.RequestHandler {
+export interface RequestScopeOptions {
+  /** Called when disposing a request scope fails. Defaults to console.error. */
+  onDisposeError?: (err: unknown) => void;
+}
+
+/**
+ * app.use() this before any routes - makes req.scope available to all following middlewares. 
+ * NOTE: Non-controller request handlers using req.scope must run inside scope.retain() / .dispose() to 
+ * avoid unexpected resolve errors if the client disconnects mid-flight.
+ */
+export function requestScopeMiddleware(provider: ServiceProvider, options?: RequestScopeOptions): express.RequestHandler {
+  const onDisposeError = options?.onDisposeError ?? (err => console.error("Error disposing request scope", err));
+
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const scope = provider.createScope();
     req.scope = scope;
@@ -12,33 +23,25 @@ export function requestScopeMiddleware(provider: ServiceProvider): express.Reque
     scope.seed(RequestKey, req);
     scope.seed(ResponseKey, res);
 
-    let finished = false;
-    const cleanup = () => {
-      if (!finished) {
-        finished = true;
-        // await scope[Symbol.asyncDispose]?.();
-      }
-    };
+    res.once("close", () => {
+      scope[Symbol.asyncDispose]().catch(onDisposeError);
+    });
 
-    res.on("finish", cleanup);
-    res.on("close", cleanup);
-    res.on("error", cleanup);
-
-    try {
-      next();
-    } catch (err) {
-      cleanup();
-      throw err;
-    }
+    next();
   }
 }
 
-// app.use() this to run the provided middleware on every request
+/** app.use() this to run controllers as middleware on every request */
 export function requestHandlerMiddleware(key: RegistrationKey<Controller>): express.RequestHandler {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
-      const scope = req.scope!;
-      const controller = scope.resolve(key);
+      if (!req.scope) {
+        throw new Error("req.scope is missing. Use requestScopeMiddleware() before any routes");
+      }
+
+      // Keep the scope alive while the controller runs, also if the response closes early
+      await using hold = req.scope.retain();
+      const controller = req.scope.resolve(key);
       await controller.handle(req, res, next);
     } catch (error) {
       next(error);

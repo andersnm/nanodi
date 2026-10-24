@@ -11,6 +11,7 @@ Modern, fast, type-safe, immutable DI container for Node.js and browsers. Synchr
 - **Isolation:** Scoped providers cache only scoped instances.
 - **Cycle Protection:** Circular dependencies throw an error.
 - **Lifetime Integrity:** Scoped and seed services cannot be injected into singletons.
+- **Ownership:** Providers dispose the singleton and scoped instances they created. Values, seeds and transients are never disposed.
 
 ## Usage
 1. Register services at startup:
@@ -173,6 +174,28 @@ The engine that resolves and caches instances.
 * **`seed<T>(key: RegistrationKey<T>, instance: T)`**
 
    Registers the instance in the current provider cache. The key must have lifetime "seed".
+
+* **`[Symbol.asyncDispose]()`**
+
+  Disposes the provider. Waits until every scope created from it has been disposed, then calls `[Symbol.asyncDispose]()` or `[Symbol.dispose]()` on owned instances in reverse creation order. Failing disposers do not stop the rest, and the errors are thrown together as an `AggregateError`. Repeated calls return the same promise.
+
+  While waiting, `createScope()` throws, but live scopes can still resolve services. After disposal, `resolve()`, `seed()` and `createScope()` throw.
+
+  Every scope must be disposed, or disposing its parent never completes. Apply a timeout in the caller if needed:
+
+  ```ts
+  await using scope = root.createScope();
+  // ...
+  await root[Symbol.asyncDispose]();
+  ```
+
+* **`retain(): AsyncDisposable`**
+
+  Returns a hold that prevents the provider from completing disposal until the hold is disposed. Use it to keep a scope alive while work started from it is still running, after its owner has started disposing it. Releasing a hold twice is a no-op. Throws if the provider is disposing or disposed.
+
+  ```ts
+  await using hold = scope.retain();
+  ```
 
 ---
 
