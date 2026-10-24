@@ -11,7 +11,7 @@ export class ServiceProvider {
   private services: ServiceCollection;
   private instances: Map<RegistrationKey<any>, any> = new Map();
   private parentProvider?: ServiceProvider;
-  private static resolutionStack: Resolution[] = [];
+  private resolutionStack: Resolution[];
 
   constructor(friend: symbol, services: ServiceCollection, parentProvider?: ServiceProvider) {
     if (friend !== FRIEND) {
@@ -20,6 +20,7 @@ export class ServiceProvider {
 
     this.services = services;
     this.parentProvider = parentProvider;
+    this.resolutionStack = parentProvider ? parentProvider.resolutionStack : [];
   }
 
   seed<T>(key: RegistrationKey<T>, instance: T): void {
@@ -45,23 +46,23 @@ export class ServiceProvider {
       throw new Error(`No registration found for key: ${key.toString()}`);
     }
 
-    if (ServiceProvider.resolutionStack.some(r => r.key === key)) {
-      const cycle = [...ServiceProvider.resolutionStack.map(r => r.key.toString()), key.toString()].join(" -> ");
+    if (this.resolutionStack.some(r => r.key === key)) {
+      const cycle = [...this.resolutionStack.map(r => r.key.toString()), key.toString()].join(" -> ");
       throw new Error(`Circular dependency detected: ${cycle}`);
     }
 
-    const resolutionTop = ServiceProvider.resolutionStack[ServiceProvider.resolutionStack.length - 1];
+    const resolutionTop = this.resolutionStack[this.resolutionStack.length - 1];
 
     if (registration.lifetime === "scoped" && resolutionTop && resolutionTop.registration.lifetime !== "scoped") {
       throw new Error(`Cannot resolve scoped service '${key.toString()}' from a transient or singleton context '${resolutionTop.key.toString()}'`);
     }
 
-    ServiceProvider.resolutionStack.push({ key, registration });
+    this.resolutionStack.push({ key, registration });
 
     try {
       return this.resolveRegistration(key, registration);
     } finally {
-      ServiceProvider.resolutionStack.pop();
+      this.resolutionStack.pop();
     }
   }
 
