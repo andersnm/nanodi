@@ -211,7 +211,7 @@ The engine that resolves and caches instances.
 
 ### `RegistrationKey<T>` type
 
-Defined as `string | RegistrationSymbol<T> | RegistrationConstructor<T>`, where `RegistrationSymbol<T>` is a `symbol` and `RegistrationConstructor<T>` is `new (...args: any[]) => T`.
+Defined as `string | RegistrationSymbol<T> | RegistrationAbstractConstructor<T>`, where `RegistrationSymbol<T>` is a `symbol` and `RegistrationAbstractConstructor<T>` is `abstract new (...args: any[]) => T`. Both abstract and concrete classes can be used as keys, while `useClass` must be a concrete class.
 
 ### `Registration<T>` type
 

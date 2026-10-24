@@ -311,3 +311,31 @@ test("Seed: seeded instance is returned instead of factory/class result", () => 
   assert.ok(handler instanceof Example, "Other scoped services still resolve normally");
   assert.strictEqual(handler.n, seededReq, "Constructor should receive the seeded value");
 });
+
+test("Abstract Key: Abstract class can be used as key and dependency", () => {
+  const services = new ServiceCollection();
+
+  abstract class Database {
+    abstract query(): string;
+  }
+
+  class PostgresDb extends Database {
+    query() { return "pg"; }
+  }
+
+  class UserService {
+    db: Database;
+    constructor(db: Database) {
+      this.db = db;
+    }
+  }
+
+  services.registerClass(Database, "singleton", PostgresDb);
+  services.registerClass(UserService, "singleton", UserService, Database);
+
+  const root = services.createProvider();
+  const db: Database = root.resolve(Database);
+
+  assert.ok(db instanceof PostgresDb);
+  assert.strictEqual(root.resolve(UserService).db, db);
+});

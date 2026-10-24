@@ -110,3 +110,24 @@ test("injectable.key works together with constructor injection", () => {
   assert.ok(instance.a instanceof A);
   assert.equal(instance.a.id, 999);
 });
+
+test("injectable.key accepts an abstract class", () => {
+  abstract class Database {
+    abstract query(): string;
+  }
+
+  @injectable("singleton")
+  @injectable.key(Database)
+  class PostgresDb extends Database {
+    query() { return "pg"; }
+  }
+
+  const collection = new ServiceCollection();
+  autobindInjectables(collection, [PostgresDb]);
+
+  const provider = collection.createProvider();
+  const instance: Database = provider.resolve(Database);
+
+  assert.ok(instance instanceof PostgresDb);
+  assert.equal(instance.query(), "pg");
+});

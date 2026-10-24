@@ -1,10 +1,13 @@
 import { ServiceProvider } from "./ServiceProvider.js";
 
 export type RegistrationConstructor<T> = new (...args: any[]) => T;
+
+/** Constructor type usable as a key. Abstract, so abstract classes can act as interface tokens. */
+export type RegistrationAbstractConstructor<T> = abstract new (...args: any[]) => T;
 export type RegistrationSymbol<T> = symbol & { __type__: T };
 
 /** Injection token type. A reference to an object of type T. Can be a string, symbol, or class. */
-export type RegistrationKey<T> = string | RegistrationSymbol<T> | RegistrationConstructor<T>;
+export type RegistrationKey<T> = string | RegistrationSymbol<T> | RegistrationAbstractConstructor<T>;
 
 /** Helper to get the underlying type of a RegistrationSymbol<T>. Useful when T is anonymous. */
 export type RegistrationSymbolType<K> = K extends RegistrationKey<infer T> ? T : never;
