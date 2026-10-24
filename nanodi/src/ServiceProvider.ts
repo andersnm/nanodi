@@ -33,6 +33,10 @@ export class ServiceProvider {
       throw new Error(`Registration for key: ${key.toString()} must have "seed" lifetime`);
     }
 
+    if (!this.parentProvider) {
+      throw new Error(`Cannot seed key: ${key.toString()} in the root provider. Use createScope()`);
+    }
+
     if (this.instances.has(key)) {
       throw new Error(`Instance for key: ${key.toString()} has already been resolved and cannot be seeded`);
     }
@@ -51,10 +55,15 @@ export class ServiceProvider {
       throw new Error(`Circular dependency detected: ${cycle}`);
     }
 
-    const resolutionTop = this.resolutionStack[this.resolutionStack.length - 1];
+    if (registration.lifetime === "scoped" || registration.lifetime === "seed") {
+      const singleton = this.resolutionStack.find(r => r.registration.lifetime === "singleton");
+      if (singleton) {
+        throw new Error(`Cannot resolve ${registration.lifetime} service '${key.toString()}' from singleton '${singleton.key.toString()}'`);
+      }
 
-    if (registration.lifetime === "scoped" && resolutionTop && resolutionTop.registration.lifetime !== "scoped") {
-      throw new Error(`Cannot resolve scoped service '${key.toString()}' from a transient or singleton context '${resolutionTop.key.toString()}'`);
+      if (!this.parentProvider) {
+        throw new Error(`Cannot resolve ${registration.lifetime} service '${key.toString()}' from the root provider. Use createScope()`);
+      }
     }
 
     this.resolutionStack.push({ key, registration });

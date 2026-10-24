@@ -10,7 +10,7 @@ Modern, fast, type-safe, immutable DI container for Node.js and browsers. Synchr
 - **Root Resolution:** Global singletons and values are always resolved and cached in the root provider.
 - **Isolation:** Scoped providers cache only scoped instances.
 - **Cycle Protection:** Circular dependencies throw an error.
-- **Lifetime Integrity:** Scoped services cannot be injected into singletons.
+- **Lifetime Integrity:** Scoped and seed services cannot be injected into singletons.
 
 ## Usage
 1. Register services at startup:

@@ -88,7 +88,7 @@ test("Factories: Can use provide() inside factory functions", () => {
   });
 
   const root = services.createProvider();
-  const api = root.resolve<{ auth: string }>("api");
+  const api = root.createScope().resolve<{ auth: string }>("api");
 
   assert.strictEqual(api.auth, "SECRET_123");
 });
@@ -103,19 +103,20 @@ test("Errors: Throws clear error for unregistered keys", () => {
   );
 });
 
-test("Shadowing: Scoped registration creates new instance despite parent existing", () => {
+test("Shadowing: Nested scope creates new instance despite parent scope existing", () => {
   const services = new ServiceCollection();
   class UserContext { id = Math.random(); }
 
   services.registerClass("ctx", "scoped", UserContext);
 
   const root = services.createProvider();
-  const rootCtx = root.resolve<UserContext>("ctx");
+  const parentScope = root.createScope();
+  const parentCtx = parentScope.resolve<UserContext>("ctx");
 
-  const scope = root.createScope();
+  const scope = parentScope.createScope();
   const scopeCtx = scope.resolve<UserContext>("ctx");
 
-  assert.notStrictEqual(rootCtx, scopeCtx, "Scope should have its own instance");
+  assert.notStrictEqual(parentCtx, scopeCtx, "Scope should have its own instance");
 });
 
 test("Captive Dependency: Singleton should not be able to provide Scoped via a shared resolution chain", () => {
@@ -144,6 +145,69 @@ test("Captive Dependency: Singleton should not be able to provide Scoped via a s
   );
 });
 
+
+test("Captive Dependency: Scoped can depend on transient that depends on scoped", () => {
+  const services = new ServiceCollection();
+
+  services.registerFactory("C", "scoped", () => ({ name: "C" }));
+  services.registerFactory("B", "transient", (provider) => ({ c: provider.resolve("C") }));
+  services.registerFactory("A", "scoped", (provider) => ({ b: provider.resolve("B") }));
+
+  const scope = services.createProvider().createScope();
+
+  assert.doesNotThrow(() => scope.resolve("A"));
+  assert.doesNotThrow(() => scope.resolve("B"), "Transient resolved directly from a scope may depend on scoped");
+});
+
+test("Captive Dependency: Singleton cannot provide Scoped through a transient", () => {
+  const services = new ServiceCollection();
+
+  services.registerFactory("Scoped", "scoped", () => ({ name: "scoped" }));
+  services.registerFactory("Transient", "transient", (provider) => ({ s: provider.resolve("Scoped") }));
+  services.registerFactory("Singleton", "singleton", (provider) => ({ t: provider.resolve("Transient") }));
+
+  const scope = services.createProvider().createScope();
+
+  assert.throws(
+    () => scope.resolve("Singleton"),
+    /Cannot resolve scoped service 'Scoped' from singleton 'Singleton'/
+  );
+});
+
+test("Captive Dependency: Singleton cannot depend on seed", () => {
+  const services = new ServiceCollection();
+
+  class Example {
+    req: number;
+    constructor(req: number) {
+      this.req = req;
+    }
+  }
+
+  services.registerSeed("req");
+  services.registerClass(Example, "singleton", Example, "req");
+
+  const scope = services.createProvider().createScope();
+  scope.seed("req", 128);
+
+  assert.throws(
+    () => scope.resolve(Example),
+    /Cannot resolve seed service 'req' from singleton/
+  );
+});
+
+test("Root: Cannot resolve scoped or seed services, or seed, in the root provider", () => {
+  const services = new ServiceCollection();
+
+  services.registerFactory("scoped", "scoped", () => ({}));
+  services.registerSeed("req");
+
+  const root = services.createProvider();
+
+  assert.throws(() => root.resolve("scoped"), /Cannot resolve scoped service 'scoped' from the root provider/);
+  assert.throws(() => root.resolve("req"), /Cannot resolve seed service 'req' from the root provider/);
+  assert.throws(() => root.seed("req", 1), /Cannot seed key: req in the root provider/);
+});
 
 test("Factories cache falsy values (0, false, null, etc.) instead of re-invoking", () => {
   const services = new ServiceCollection();
