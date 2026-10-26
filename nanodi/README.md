@@ -131,14 +131,14 @@ The container used to define your dependencies before the application starts.
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `value: T`: The value to set.
 
-* **`registerClass<T>(key, lifetime, useClass, ...args)`**
+* **`registerClass<K, C>(key, lifetime, useClass, ...args)`**
 
-  Adds a class-based service to the collection with type-checked constructor arguments.
+  Adds a class-based service to the collection with type-checked constructor arguments. The class must produce an instance assignable to the key type, so an abstract class key can be bound to any implementation.
 
-    * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
+    * `key: RegistrationKey<K>`: A `string`, `Symbol`, or `Class` identifier for the service.
     * `lifetime: ClassLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
-    * `useClass: RegistrationConstructor<T>`: The class to construct from.
-    * `...args: RegistrationConstructorParameters<T>`: Constructor arguments.
+    * `useClass: C extends RegistrationConstructor<K>`: The class to construct from.
+    * `...args: RegistrationConstructorParameters<C>`: Constructor arguments.
 
 * **`registerFactory<T>(key, lifetime, useFactory)`**
 
@@ -205,9 +205,9 @@ The engine that resolves and caches instances.
 
   Specifies injection lifetime and bindings for `autobindInjectables()`.
 
-* **`@injectable.key<T>(key: RegistrationKey<T>)`**
+* **`@injectable.key<K>(key: RegistrationKey<K>)`**
 
-  Specifies the injection key used to reference the class.
+  Specifies the injection key used to reference the class. The class must produce an instance assignable to the key type.
 
 ---
 
@@ -236,6 +236,8 @@ The engine that resolves and caches instances.
 ### `RegistrationKey<T>` type
 
 Defined as `string | RegistrationSymbol<T> | RegistrationAbstractConstructor<T>`, where `RegistrationSymbol<T>` is a `symbol` and `RegistrationAbstractConstructor<T>` is `abstract new (...args: any[]) => T`. Both abstract and concrete classes can be used as keys, while `useClass` must be a concrete class.
+
+String keys are an untyped fallback for quick prototyping. A string carries no type, so it matches any `T`: a string key type-checks against any constructor parameter, and `resolve("key")` returns `unknown`. Use `registrationSymbol<T>()` or a class key to get compile-time checks.
 
 ### `Registration<T>` type
 

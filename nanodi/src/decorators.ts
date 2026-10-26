@@ -30,10 +30,8 @@ function injectableDecorator<T extends new (...args: any[]) => any>(
   };
 }
 
-function keyDecorator<T extends new (...args: any[]) => any>(
-  key: RegistrationKey<InstanceType<T>>
-) {
-  return (value: T, context: ClassDecoratorContext<T>) => {
+function keyDecorator<K>(key: RegistrationKey<K>) {
+  return <T extends RegistrationConstructor<K>>(value: T, context: ClassDecoratorContext<T>) => {
     setMetadata(value, context, "nanodi:injectable.key", key);
   };
 }

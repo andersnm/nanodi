@@ -24,8 +24,8 @@ export class ServiceCollection {
   }
 
   /** Register a service class with typed constructor bindings. */
-  registerClass<T extends RegistrationConstructor<any>>(key: RegistrationKey<InstanceType<T>>, lifetime: "singleton" | "scoped" | "transient", useClass: T, ...args: RegistrationConstructorParameters<T>): void {
-    this.register<InstanceType<T>>(key, { lifetime, useClass, args });
+  registerClass<K, C extends RegistrationConstructor<K>>(key: RegistrationKey<K>, lifetime: "singleton" | "scoped" | "transient", useClass: C, ...args: RegistrationConstructorParameters<C>): void {
+    this.register<K>(key, { lifetime, useClass, args });
   }
 
   /** Register a service instantiated by factory callback. */
