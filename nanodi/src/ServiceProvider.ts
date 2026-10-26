@@ -1,4 +1,5 @@
 import { FRIEND } from "./friend.js";
+import { keyName } from "./keyName.js";
 import { Registration, RegistrationConstructor, RegistrationKey } from "./Registration.js";
 import { ServiceCollection } from "./ServiceCollection.js";
 import { ServiceDisposer } from "./ServiceDisposer.js";
@@ -33,19 +34,19 @@ export class ServiceProvider implements AsyncDisposable {
 
     const registration = this.services.get(key);
     if (!registration) {
-      throw new Error(`No registration found for key: ${key.toString()}`);
+      throw new Error(`No registration found for key: ${keyName(key)}`);
     }
 
     if (registration.lifetime !== "seed") {
-      throw new Error(`Registration for key: ${key.toString()} must have "seed" lifetime`);
+      throw new Error(`Registration for key: ${keyName(key)} must have "seed" lifetime`);
     }
 
     if (!this.parentProvider) {
-      throw new Error(`Cannot seed key: ${key.toString()} in the root provider. Use createScope()`);
+      throw new Error(`Cannot seed key: ${keyName(key)} in the root provider. Use createScope()`);
     }
 
     if (this.instances.has(key)) {
-      throw new Error(`Instance for key: ${key.toString()} has already been resolved and cannot be seeded`);
+      throw new Error(`Instance for key: ${keyName(key)} has already been resolved and cannot be seeded`);
     }
 
     this.instances.set(key, instance);
@@ -58,22 +59,22 @@ export class ServiceProvider implements AsyncDisposable {
 
     const registration = this.services.get(key);
     if (!registration) {
-      throw new Error(`No registration found for key: ${key.toString()}`);
+      throw new Error(`No registration found for key: ${keyName(key)}`);
     }
 
     if (this.resolutionStack.some(r => r.key === key)) {
-      const cycle = [...this.resolutionStack.map(r => r.key.toString()), key.toString()].join(" -> ");
+      const cycle = [...this.resolutionStack.map(r => keyName(r.key)), keyName(key)].join(" -> ");
       throw new Error(`Circular dependency detected: ${cycle}`);
     }
 
     if (registration.lifetime === "scoped" || registration.lifetime === "seed") {
       const singleton = this.resolutionStack.find(r => r.registration.lifetime === "singleton");
       if (singleton) {
-        throw new Error(`Cannot resolve ${registration.lifetime} service '${key.toString()}' from singleton '${singleton.key.toString()}'`);
+        throw new Error(`Cannot resolve ${registration.lifetime} service '${keyName(key)}' from singleton '${keyName(singleton.key)}'`);
       }
 
       if (!this.parentProvider) {
-        throw new Error(`Cannot resolve ${registration.lifetime} service '${key.toString()}' from the root provider. Use createScope()`);
+        throw new Error(`Cannot resolve ${registration.lifetime} service '${keyName(key)}' from the root provider. Use createScope()`);
       }
     }
 
@@ -143,10 +144,10 @@ export class ServiceProvider implements AsyncDisposable {
       }
 
       if (registration.lifetime === "seed") {
-        throw new Error(`Key: ${key.toString()} has not been seeded`);
+        throw new Error(`Key: ${keyName(key)} has not been seeded`);
       }
 
-      throw new Error(`Invalid registration for key: ${key.toString()}`);
+      throw new Error(`Invalid registration for key: ${keyName(key)}`);
     }
   }
 

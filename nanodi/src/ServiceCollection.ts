@@ -1,4 +1,5 @@
 import { FRIEND } from "./friend.js";
+import { keyName } from "./keyName.js";
 import { Registration, RegistrationClass, RegistrationConstructor, RegistrationConstructorParameters, RegistrationKey } from "./Registration.js";
 import { ServiceProvider } from "./ServiceProvider.js";
 
@@ -13,7 +14,7 @@ export class ServiceCollection {
     }
 
     if (this.services.has(key)) {
-      throw new Error(`Service already registered for key: ${key.toString()}`);
+      throw new Error(`Service already registered for key: ${keyName(key)}`);
     }
 
     this.services.set(key, registration);
