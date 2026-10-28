@@ -154,6 +154,15 @@ The container used to define your dependencies before the application starts.
 
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
 
+* **`validate()`**
+
+  Checks the dependency graph of class registrations and throws an `AggregateError` listing every problem: missing registrations, circular dependencies, and singletons depending on scoped or seed services, also through transients. Factory dependencies are not known until the factory runs, so they are not checked. Call it at startup or from a test:
+
+  ```ts
+  services.validate();
+  const root = services.createProvider();
+  ```
+
 * **`createProvider()`**
 
   Freezes the collection and returns the root `ServiceProvider`.

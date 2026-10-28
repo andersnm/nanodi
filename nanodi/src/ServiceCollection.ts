@@ -38,6 +38,84 @@ export class ServiceCollection {
     this.register(key, { lifetime: "seed" });
   }
 
+  /**
+   * Checks the dependency graph of class registrations: missing registrations, circular dependencies,
+   * and singletons depending on scoped or seed services, also through transients.
+   * Factory dependencies are not known until called and are not checked.
+   * Throws an AggregateError listing every problem found.
+   */
+  validate(): void {
+    const errors: Error[] = [];
+    const visiting: RegistrationKey<any>[] = [];
+    const visited = new Set<RegistrationKey<any>>();
+
+    const visit = (key: RegistrationKey<any>) => {
+      if (visited.has(key)) {
+        return;
+      }
+
+      const index = visiting.indexOf(key);
+      if (index !== -1) {
+        const cycle = [...visiting.slice(index), key].map(keyName).join(" -> ");
+        errors.push(new Error(`Circular dependency detected: ${cycle}`));
+        return;
+      }
+
+      const registration = this.services.get(key);
+      if (!registration || !("useClass" in registration)) {
+        return;
+      }
+
+      visiting.push(key);
+      for (const arg of registration.args || []) {
+        if (!this.services.has(arg)) {
+          errors.push(new Error(`No registration found for key: ${keyName(arg)} (required by ${keyName(key)})`));
+          continue;
+        }
+
+        visit(arg);
+      }
+
+      visiting.pop();
+      visited.add(key);
+    };
+
+    // Same rule as resolve(): a singleton cannot reach a scoped or seed service, also not through transients
+    const visitSingleton = (singletonKey: RegistrationKey<any>, key: RegistrationKey<any>, seen: Set<RegistrationKey<any>>) => {
+      const registration = this.services.get(key);
+      if (!registration || !("useClass" in registration)) {
+        return;
+      }
+
+      for (const arg of registration.args || []) {
+        const argRegistration = this.services.get(arg);
+        if (!argRegistration || seen.has(arg)) {
+          continue;
+        }
+
+        seen.add(arg);
+        if (argRegistration.lifetime === "scoped" || argRegistration.lifetime === "seed") {
+          errors.push(new Error(`Cannot resolve ${argRegistration.lifetime} service '${keyName(arg)}' from singleton '${keyName(singletonKey)}'`));
+        } else if (argRegistration.lifetime === "transient") {
+          visitSingleton(singletonKey, arg, seen);
+        }
+      }
+    };
+
+    for (const [key, registration] of this.services) {
+      visit(key);
+
+      if (registration.lifetime === "singleton") {
+        visitSingleton(key, key, new Set([key]));
+      }
+    }
+
+    if (errors.length > 0) {
+      const details = errors.map(e => `  - ${e.message}`).join("\n");
+      throw new AggregateError(errors, `Invalid service registrations:\n${details}`);
+    }
+  }
+
   createProvider(): ServiceProvider {
     this.frozen = true;
     return new ServiceProvider(FRIEND, this);
