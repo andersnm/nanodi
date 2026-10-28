@@ -149,6 +149,26 @@ test("Dispose: Disposed provider cannot resolve, set scoped values or create sco
   assert.throws(() => scope.createScope(), /disposing or disposed/);
 });
 
+test("Dispose: Providers resolved as services are not owned", async () => {
+  const { log, SyncResource } = createTracker();
+  const services = new ServiceCollection();
+  const ScopeKey = "scope";
+  services.registerFactory(ServiceProvider, "singleton", provider => provider);
+  services.registerFactory(ScopeKey, "scoped", provider => provider);
+  services.registerFactory("resource", "scoped", () => new SyncResource("resource"));
+
+  const root = services.createProvider();
+  const scope = root.createScope();
+  assert.strictEqual(root.resolve(ServiceProvider), root);
+  assert.strictEqual(scope.resolve(ScopeKey), scope);
+  scope.resolve("resource");
+
+  await scope[Symbol.asyncDispose]();
+  await root[Symbol.asyncDispose]();
+
+  assert.deepStrictEqual(log, ["resource"]);
+});
+
 test("Dispose: Is idempotent and disposes each instance once", async () => {
   const { log, SyncResource } = createTracker();
   const services = new ServiceCollection();

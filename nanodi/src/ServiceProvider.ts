@@ -92,6 +92,13 @@ export class ServiceProvider implements AsyncDisposable {
     return new useClass(...factoryArgs);
   }
 
+  private track(instance: unknown): void {
+    // Providers are never owned by another provider, e.g. when a factory returns the provider to make it injectable.
+    if (!(instance instanceof ServiceProvider)) {
+      this.disposer.track(instance);
+    }
+  }
+
   private resolveRegistration<T>(key: RegistrationKey<T>, registration: Registration<T>): T {
     if (this.instances.has(key)) {
       return this.instances.get(key);
@@ -101,14 +108,14 @@ export class ServiceProvider implements AsyncDisposable {
     if (registration.lifetime === "scoped" && "useClass" in registration) {
       instance = this.createInstance(registration.useClass, registration.args || []);
       this.instances.set(key, instance);
-      this.disposer.track(instance);
+      this.track(instance);
       return instance;
     }
 
     if (registration.lifetime === "scoped" && "useFactory" in registration) {
       instance = registration.useFactory(this);
       this.instances.set(key, instance);
-      this.disposer.track(instance);
+      this.track(instance);
       return instance;
     }
 
@@ -132,14 +139,14 @@ export class ServiceProvider implements AsyncDisposable {
       if (registration.lifetime === "singleton" && "useClass" in registration) {
         instance = this.createInstance(registration.useClass, registration.args || []);
         this.instances.set(key, instance);
-        this.disposer.track(instance);
+        this.track(instance);
         return instance;
       }
 
       if (registration.lifetime === "singleton" && "useFactory" in registration) {
         instance = registration.useFactory(this);
         this.instances.set(key, instance);
-        this.disposer.track(instance);
+        this.track(instance);
         return instance;
       }
 
