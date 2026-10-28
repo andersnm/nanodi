@@ -2,14 +2,12 @@ name: Test
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['**']
     tags:
       - 'v*'
-  pull_request:
-    branches: [main, develop]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +24,21 @@ jobs:
           name: packages
           path: '*.tgz'
 
+  test-express5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      - run: npm ci
+      - run: npm i --no-save -w nanodi-express -w nanodi-express-test -w nanodi-express-demo express@5 @types/express@5
+      - run: npm run build
+      - run: npm run test:dist
+
   publish-core:
-    needs: test
+    needs: [build, test-express5]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')  # publish only on version tags
     permissions:
