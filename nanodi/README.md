@@ -10,8 +10,8 @@ Modern, fast, type-safe, immutable DI container for Node.js and browsers. Synchr
 - **Root Resolution:** Global singletons and values are always resolved and cached in the root provider.
 - **Isolation:** Scoped providers cache only scoped instances.
 - **Cycle Protection:** Circular dependencies throw an error.
-- **Lifetime Integrity:** Scoped and seed services cannot be injected into singletons.
-- **Ownership:** Providers dispose the singleton and scoped instances they created. Values, seeds and transients are never disposed.
+- **Lifetime Integrity:** Scoped services and scoped values cannot be injected into singletons.
+- **Ownership:** Providers dispose the singleton and scoped instances they created. Values, scoped values and transients are never disposed.
 
 ## Usage
 1. Register services at startup:
@@ -19,7 +19,7 @@ Modern, fast, type-safe, immutable DI container for Node.js and browsers. Synchr
 ```ts
 const services = new ServiceCollection();
 services.registerClass(Database, "singleton", PostgresDb, ConfigKey);
-services.registerSeed(RequestKey);
+services.registerScopedValue(RequestKey);
 
 autobindInjectables(services, [ PostgresDb, UserService ]);
 ```
@@ -51,7 +51,7 @@ class UserService {
 ```ts
 app.get('/user', async (req, res) => {
     const scope = root.createScope();
-    scope.seed(RequestKey, req);
+    scope.setScopedValue(RequestKey, req);
 
     try {
         const service = scope.resolve(UserService);
@@ -148,15 +148,15 @@ The container used to define your dependencies before the application starts.
     * `lifetime: FactoryLifetime`: One of `"singleton"`, `"scoped"`, `"transient"`.
     * `useFactory: (serviceProvider: ServiceProvider) => T`: The factory callback.
 
-* **`registerSeed<T>(key)`**
+* **`registerScopedValue<T>(key)`**
 
-  Adds a seed service placeholder.
+  Declares a value that is supplied per scope with `setScopedValue()`, for example the current request. It behaves like a scoped service whose instance is set by the caller instead of constructed. Not to be confused with `registerValue()`, which takes one value shared by all scopes.
 
     * `key: RegistrationKey<T>`: A `string`, `Symbol`, or `Class` identifier for the service.
 
 * **`validate()`**
 
-  Checks the dependency graph of class registrations and throws an `AggregateError` listing every problem: missing registrations, circular dependencies, and singletons depending on scoped or seed services, also through transients. Factory dependencies are not known until the factory runs, so they are not checked. Call it at startup or from a test:
+  Checks the dependency graph of class registrations and throws an `AggregateError` listing every problem: missing registrations, circular dependencies, and singletons depending on scoped services or scoped values, also through transients. Factory dependencies are not known until the factory runs, so they are not checked. Call it at startup or from a test:
 
   ```ts
   services.validate();
@@ -180,15 +180,15 @@ The engine that resolves and caches instances.
 
   This child shares the same service registrations but maintains its own cache for **Scoped** services.
 
-* **`seed<T>(key: RegistrationKey<T>, instance: T)`**
+* **`setScopedValue<T>(key: RegistrationKey<T>, value: T)`**
 
-   Registers the instance in the current provider cache. The key must have lifetime "seed".
+  Sets the value for a key registered with `registerScopedValue()` in this scope. Throws in the root provider, and if the value is already set in this scope. Resolving the key before it is set throws.
 
 * **`[Symbol.asyncDispose]()`**
 
   Disposes the provider. Waits until every scope created from it has been disposed, then calls `[Symbol.asyncDispose]()` or `[Symbol.dispose]()` on owned instances in reverse creation order. Failing disposers do not stop the rest, and the errors are thrown together as an `AggregateError`. Repeated calls return the same promise.
 
-  While waiting, `createScope()` throws, but live scopes can still resolve services. After disposal, `resolve()`, `seed()` and `createScope()` throw.
+  While waiting, `createScope()` throws, but live scopes can still resolve services. After disposal, `resolve()`, `setScopedValue()` and `createScope()` throw.
 
   Every scope must be disposed, or disposing its parent never completes. Apply a timeout in the caller if needed:
 
@@ -254,7 +254,7 @@ Describes a service type and its lifetime strategy.
 
 | Field | Type | Description |
 |---------|-|------------|
-|`lifetime`| `Lifetime` enum | One of `"value"`, `"singleton"`, `"scoped"`, `"transient"`, `"seed"`
+|`lifetime`| `Lifetime` enum | One of `"value"`, `"singleton"`, `"scoped"`, `"transient"`, `"scopedValue"`
 |`useValue`| any | Valid with lifetime: `"value"`
 |`useClass`| Constructor | Valid with lifetime: `"singleton"`, `"scoped"`, `"transient"`
 |`useFactory`| Function | Valid with lifetime: `"singleton"`, `"scoped"`, `"transient"`
@@ -265,7 +265,7 @@ Describes a service type and its lifetime strategy.
 | Lifetime | Description |
 |---------|-------------|
 | **`"value"`** | Always returns the provided constant. No construction. |
-| **`"seed"`** | Scoped constant value provided at runtime. No construction. |
+| **`"scopedValue"`** | Value set per scope with `setScopedValue()`. No construction. |
 | **`"singleton"`** | Created once in the **root** provider and reused everywhere. |
 | **`"scoped"`** | Created once **per scope**. Scoped instances never leak upward. |
 | **`"transient"`** | A new instance is created on every `resolve()`. |
@@ -296,7 +296,10 @@ services.registerFactory(RequestId, "scoped", () => crypto.randomUUID());
 services.registerClass(Logger, "transient", Logger);
 ```
 
-#### Scoped seed value
+#### Scoped value
 ```ts
-services.registerSeed(RequestKey);
+services.registerScopedValue(RequestKey);
+
+// In each scope, e.g. per request:
+scope.setScopedValue(RequestKey, req);
 ```

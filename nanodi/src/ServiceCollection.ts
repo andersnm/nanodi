@@ -34,13 +34,13 @@ export class ServiceCollection {
     this.register<T>(key, { lifetime, useFactory });
   }
 
-  registerSeed<T>(key: RegistrationKey<T>): void {
-    this.register(key, { lifetime: "seed" });
+  registerScopedValue<T>(key: RegistrationKey<T>): void {
+    this.register(key, { lifetime: "scopedValue" });
   }
 
   /**
    * Checks the dependency graph of class registrations: missing registrations, circular dependencies,
-   * and singletons depending on scoped or seed services, also through transients.
+   * and singletons depending on scoped or scopedValue services, also through transients.
    * Factory dependencies are not known until called and are not checked.
    * Throws an AggregateError listing every problem found.
    */
@@ -80,7 +80,7 @@ export class ServiceCollection {
       visited.add(key);
     };
 
-    // Same rule as resolve(): a singleton cannot reach a scoped or seed service, also not through transients
+    // Same rule as resolve(): a singleton cannot reach a scoped or scopedValue service, also not through transients
     const visitSingleton = (singletonKey: RegistrationKey<any>, key: RegistrationKey<any>, seen: Set<RegistrationKey<any>>) => {
       const registration = this.services.get(key);
       if (!registration || !("useClass" in registration)) {
@@ -94,7 +94,7 @@ export class ServiceCollection {
         }
 
         seen.add(arg);
-        if (argRegistration.lifetime === "scoped" || argRegistration.lifetime === "seed") {
+        if (argRegistration.lifetime === "scoped" || argRegistration.lifetime === "scopedValue") {
           errors.push(new Error(`Cannot resolve ${argRegistration.lifetime} service '${keyName(arg)}' from singleton '${keyName(singletonKey)}'`));
         } else if (argRegistration.lifetime === "transient") {
           visitSingleton(singletonKey, arg, seen);

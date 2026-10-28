@@ -47,19 +47,19 @@ test("Dispose: Scope disposes owned scoped instances in reverse creation order",
   assert.deepStrictEqual(log, ["second", "first"], "Dependents are disposed before their dependencies");
 });
 
-test("Dispose: Values, seeds and transients are not disposed", async () => {
+test("Dispose: Values, scoped values and transients are not disposed", async () => {
   const { log, SyncResource } = createTracker();
   const services = new ServiceCollection();
 
   services.registerValue("value", new SyncResource("value"));
-  services.registerSeed("seed");
+  services.registerScopedValue("scopedValue");
   services.registerFactory("transient", "transient", () => new SyncResource("transient"));
 
   const root = services.createProvider();
   const scope = root.createScope();
-  scope.seed("seed", new SyncResource("seed"));
+  scope.setScopedValue("scopedValue", new SyncResource("scopedValue"));
   scope.resolve("value");
-  scope.resolve("seed");
+  scope.resolve("scopedValue");
   scope.resolve("transient");
 
   await scope[Symbol.asyncDispose]();
@@ -136,16 +136,16 @@ test("Dispose: Draining root rejects new scopes but in-flight scopes can still r
   assert.deepStrictEqual(log, ["lazy", "dependency"], "Singletons created during drain are disposed too");
 });
 
-test("Dispose: Disposed provider cannot resolve, seed or create scopes", async () => {
+test("Dispose: Disposed provider cannot resolve, set scoped values or create scopes", async () => {
   const services = new ServiceCollection();
   services.registerFactory("scoped", "scoped", () => ({}));
-  services.registerSeed("seed");
+  services.registerScopedValue("scopedValue");
 
   const scope = services.createProvider().createScope();
   await scope[Symbol.asyncDispose]();
 
   assert.throws(() => scope.resolve("scoped"), /disposed/);
-  assert.throws(() => scope.seed("seed", 1), /disposed/);
+  assert.throws(() => scope.setScopedValue("scopedValue", 1), /disposed/);
   assert.throws(() => scope.createScope(), /disposing or disposed/);
 });
 

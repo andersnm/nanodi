@@ -22,7 +22,7 @@ test("Validate: A valid collection passes", () => {
   const services = new ServiceCollection();
 
   services.registerValue("config", 1);
-  services.registerSeed("req");
+  services.registerScopedValue("req");
   services.registerClass("dep", "transient", Dep);
   services.registerClass("singleton", "singleton", Service, "config");
   services.registerClass("scoped", "scoped", Service, "req");
@@ -49,17 +49,17 @@ test("Validate: Reports circular dependencies once", () => {
   assert.deepStrictEqual(validationErrors(services), ["Circular dependency detected: A -> B -> C -> A"]);
 });
 
-test("Validate: Reports singletons depending on scoped or seed services", () => {
+test("Validate: Reports singletons depending on scoped services or scoped values", () => {
   const services = new ServiceCollection();
 
-  services.registerSeed("req");
+  services.registerScopedValue("req");
   services.registerClass("scoped", "scoped", Dep);
   services.registerClass("transient", "transient", Service, "scoped");
   services.registerClass("direct", "singleton", Service, "req");
   services.registerClass("indirect", "singleton", Service, "transient");
 
   assert.deepStrictEqual(validationErrors(services), [
-    "Cannot resolve seed service 'req' from singleton 'direct'",
+    "Cannot resolve scopedValue service 'req' from singleton 'direct'",
     "Cannot resolve scoped service 'scoped' from singleton 'indirect'",
   ]);
 });

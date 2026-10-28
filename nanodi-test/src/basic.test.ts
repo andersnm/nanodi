@@ -174,7 +174,7 @@ test("Captive Dependency: Singleton cannot provide Scoped through a transient", 
   );
 });
 
-test("Captive Dependency: Singleton cannot depend on seed", () => {
+test("Captive Dependency: Singleton cannot depend on scoped value", () => {
   const services = new ServiceCollection();
 
   class Example {
@@ -184,29 +184,29 @@ test("Captive Dependency: Singleton cannot depend on seed", () => {
     }
   }
 
-  services.registerSeed("req");
+  services.registerScopedValue("req");
   services.registerClass(Example, "singleton", Example, "req");
 
   const scope = services.createProvider().createScope();
-  scope.seed("req", 128);
+  scope.setScopedValue("req", 128);
 
   assert.throws(
     () => scope.resolve(Example),
-    /Cannot resolve seed service 'req' from singleton/
+    /Cannot resolve scopedValue service 'req' from singleton/
   );
 });
 
-test("Root: Cannot resolve scoped or seed services, or seed, in the root provider", () => {
+test("Root: Cannot resolve scoped services or scoped values, or set scoped values, in the root provider", () => {
   const services = new ServiceCollection();
 
   services.registerFactory("scoped", "scoped", () => ({}));
-  services.registerSeed("req");
+  services.registerScopedValue("req");
 
   const root = services.createProvider();
 
   assert.throws(() => root.resolve("scoped"), /Cannot resolve scoped service 'scoped' from the root provider/);
-  assert.throws(() => root.resolve("req"), /Cannot resolve seed service 'req' from the root provider/);
-  assert.throws(() => root.seed("req", 1), /Cannot seed key: req in the root provider/);
+  assert.throws(() => root.resolve("req"), /Cannot resolve scopedValue service 'req' from the root provider/);
+  assert.throws(() => root.setScopedValue("req", 1), /Cannot set scoped value for key: req in the root provider/);
 });
 
 test("Factories cache falsy values (0, false, null, etc.) instead of re-invoking", () => {
@@ -247,18 +247,18 @@ test("Factories cache falsy values (0, false, null, etc.) instead of re-invoking
   assert.strictEqual(scopedFactoryCallCount, 1, "Scoped factory should still be called only once (cached in scope)");
 });
 
-test("Seed: throws when key is not registered", () => {
+test("ScopedValue: throws when key is not registered", () => {
   const services = new ServiceCollection();
   const root = services.createProvider();
   const scope = root.createScope();
 
   assert.throws(
-    () => scope.seed("missing", 123),
+    () => scope.setScopedValue("missing", 123),
     /No registration found for key/
   );
 });
 
-test("Seed: throws when registration is not scoped or seed-enabled", () => {
+test("ScopedValue: throws when registration is not a scoped value", () => {
   const services = new ServiceCollection();
 
   services.registerFactory("notScoped", "singleton", () => 42);
@@ -267,25 +267,25 @@ test("Seed: throws when registration is not scoped or seed-enabled", () => {
   const scope = root.createScope();
 
   assert.throws(
-    () => scope.seed("notScoped", 123),
-    /must have "seed" lifetime/
+    () => scope.setScopedValue("notScoped", 123),
+    /must have "scopedValue" lifetime/
   );
 });
 
-test("Seed: throws when instance has not been seeded", () => {
+test("ScopedValue: throws when the value has not been set", () => {
   const services = new ServiceCollection();
-  services.registerSeed("scopedValue");
+  services.registerScopedValue("scopedValue");
 
   const root = services.createProvider();
   const scope = root.createScope();
 
   assert.throws(
     () => scope.resolve("scopedValue"),
-    /Key: scopedValue has not been seeded/
+    /Scoped value for key: scopedValue has not been set/
   );
 });
 
-test("Seed: seeded instance is returned instead of factory/class result", () => {
+test("ScopedValue: set value is resolved and injected", () => {
   const services = new ServiceCollection();
 
   class Example {
@@ -295,21 +295,21 @@ test("Seed: seeded instance is returned instead of factory/class result", () => 
     }
   }
 
-  services.registerSeed("req");
+  services.registerScopedValue("req");
   services.registerClass(Example, "scoped", Example, "req");
 
   const root = services.createProvider();
   const scope = root.createScope();
 
-  const seededReq = 128;
-  scope.seed("req", seededReq);
+  const scopedReq = 128;
+  scope.setScopedValue("req", scopedReq);
 
-  const resolvedReq = scope.resolve<typeof seededReq>("req");
-  assert.strictEqual(resolvedReq, seededReq, "Seeded instance should be returned");
+  const resolvedReq = scope.resolve<typeof scopedReq>("req");
+  assert.strictEqual(resolvedReq, scopedReq, "Set value should be returned");
 
   const handler = scope.resolve(Example);
   assert.ok(handler instanceof Example, "Other scoped services still resolve normally");
-  assert.strictEqual(handler.n, seededReq, "Constructor should receive the seeded value");
+  assert.strictEqual(handler.n, scopedReq, "Constructor should receive the set value");
 });
 
 test("Abstract Key: Abstract class can be used as key and dependency", () => {

@@ -19,15 +19,15 @@ type MapToKeys<T extends any[]> = {
   [K in keyof T]: RegistrationKey<T[K]>
 };
 
-export type Lifetime = "value" | "singleton" | "scoped" | "transient" | "seed";
+export type Lifetime = "value" | "singleton" | "scoped" | "transient" | "scopedValue";
 
 export interface RegistrationValue<T> {
   lifetime: "value";
   useValue: T;
 }
 
-export interface RegistrationSeed {
-  lifetime: "seed";
+export interface RegistrationScopedValue {
+  lifetime: "scopedValue";
 }
 
 export interface RegistrationClass<T> {
@@ -43,7 +43,7 @@ export interface RegistrationFactory<T> {
 
 export type Registration<T> =
   | RegistrationValue<T>
-  | RegistrationSeed
+  | RegistrationScopedValue
   | RegistrationClass<T>
   | RegistrationFactory<T>;
 

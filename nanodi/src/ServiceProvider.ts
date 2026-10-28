@@ -27,7 +27,7 @@ export class ServiceProvider implements AsyncDisposable {
     this.disposer = new ServiceDisposer(parentProvider?.disposer);
   }
 
-  seed<T>(key: RegistrationKey<T>, instance: T): void {
+  setScopedValue<T>(key: RegistrationKey<T>, value: T): void {
     if (this.disposer.state === "disposed") {
       throw new Error("Cannot use a disposed provider");
     }
@@ -37,19 +37,19 @@ export class ServiceProvider implements AsyncDisposable {
       throw new Error(`No registration found for key: ${keyName(key)}`);
     }
 
-    if (registration.lifetime !== "seed") {
-      throw new Error(`Registration for key: ${keyName(key)} must have "seed" lifetime`);
+    if (registration.lifetime !== "scopedValue") {
+      throw new Error(`Registration for key: ${keyName(key)} must have "scopedValue" lifetime. Use registerScopedValue()`);
     }
 
     if (!this.parentProvider) {
-      throw new Error(`Cannot seed key: ${keyName(key)} in the root provider. Use createScope()`);
+      throw new Error(`Cannot set scoped value for key: ${keyName(key)} in the root provider. Use createScope()`);
     }
 
     if (this.instances.has(key)) {
-      throw new Error(`Instance for key: ${keyName(key)} has already been resolved and cannot be seeded`);
+      throw new Error(`Scoped value for key: ${keyName(key)} has already been set`);
     }
 
-    this.instances.set(key, instance);
+    this.instances.set(key, value);
   }
 
   resolve<T>(key: RegistrationKey<T>): T {
@@ -67,7 +67,7 @@ export class ServiceProvider implements AsyncDisposable {
       throw new Error(`Circular dependency detected: ${cycle}`);
     }
 
-    if (registration.lifetime === "scoped" || registration.lifetime === "seed") {
+    if (registration.lifetime === "scoped" || registration.lifetime === "scopedValue") {
       const singleton = this.resolutionStack.find(r => r.registration.lifetime === "singleton");
       if (singleton) {
         throw new Error(`Cannot resolve ${registration.lifetime} service '${keyName(key)}' from singleton '${keyName(singleton.key)}'`);
@@ -143,8 +143,8 @@ export class ServiceProvider implements AsyncDisposable {
         return instance;
       }
 
-      if (registration.lifetime === "seed") {
-        throw new Error(`Key: ${keyName(key)} has not been seeded`);
+      if (registration.lifetime === "scopedValue") {
+        throw new Error(`Scoped value for key: ${keyName(key)} has not been set. Use setScopedValue()`);
       }
 
       throw new Error(`Invalid registration for key: ${keyName(key)}`);

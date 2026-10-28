@@ -26,8 +26,8 @@ And wire up like this:
 
 async function main() {
   const services = new ServiceCollection();
-  services.registerSeed(RequestKey);
-  services.registerSeed(ResponseKey);
+  services.registerScopedValue(RequestKey);
+  services.registerScopedValue(ResponseKey);
   autobindInjectables(services, [ HelloController ]);
 
   const provider = services.createProvider();

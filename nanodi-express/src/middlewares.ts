@@ -20,8 +20,8 @@ export function requestScopeMiddleware(provider: ServiceProvider, options?: Requ
     const scope = provider.createScope();
     req.scope = scope;
 
-    scope.seed(RequestKey, req);
-    scope.seed(ResponseKey, res);
+    scope.setScopedValue(RequestKey, req);
+    scope.setScopedValue(ResponseKey, res);
 
     res.once("close", () => {
       scope[Symbol.asyncDispose]().catch(onDisposeError);

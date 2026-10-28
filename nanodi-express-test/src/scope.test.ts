@@ -31,8 +31,8 @@ function deferred<T = void>() {
 
 function createBaseServices() {
   const services = new ServiceCollection();
-  services.registerSeed(RequestKey);
-  services.registerSeed(ResponseKey);
+  services.registerScopedValue(RequestKey);
+  services.registerScopedValue(ResponseKey);
   return services;
 }
 

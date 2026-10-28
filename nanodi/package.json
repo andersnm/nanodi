@@ -1,6 +1,6 @@
 {
   "name": "@nanodi/core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": false,
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.js",
