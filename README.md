@@ -12,6 +12,12 @@ Use nanodi for request-scoped dependency injection in Express controllers.
 
 See [nanodi-express](nanodi-express)
 
+## @nanodi/koa
+
+Use nanodi for request-scoped dependency injection in Koa controllers.
+
+See [nanodi-koa](nanodi-koa)
+
 ## Development
 
 ```bash

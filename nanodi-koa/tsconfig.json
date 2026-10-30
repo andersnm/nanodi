@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": [ "node" ],
+    // @types/koa breaks when content-disposition@2 (ships own types, e.g. via express 5) is hoisted
+    "skipLibCheck": true,
+    "lib": [ "ES2020", "ESNext.Decorators", "ESNext.Disposable" ]
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

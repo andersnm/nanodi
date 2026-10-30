@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": [ "node" ],
+    // @types/koa breaks when content-disposition@2 (ships own types, e.g. via express 5) is hoisted
+    "skipLibCheck": true,
+    "lib": [ "ES2021", "ESNext.Disposable" ]
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

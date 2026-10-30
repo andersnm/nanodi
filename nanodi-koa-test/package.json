@@ -1,0 +1,22 @@
+{
+  "name": "nanodi-koa-test",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
+    "test:dist": "node --enable-source-maps --test \"dist/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.0",
+    "@types/node": "^18.11.18",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@koa/router": "^15.0.0",
+    "@nanodi/core": "*",
+    "@nanodi/koa": "*",
+    "koa": "^3.0.0"
+  }
+}

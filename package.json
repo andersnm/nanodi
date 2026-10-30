@@ -4,15 +4,17 @@
   "workspaces": [
     "nanodi",
     "nanodi-express",
+    "nanodi-koa",
     "nanodi-express-demo",
     "nanodi-test",
-    "nanodi-express-test"
+    "nanodi-express-test",
+    "nanodi-koa-test"
   ],
   "scripts": {
     "build": "npm run build -ws",
-    "test": "npm run test -workspace nanodi-test -workspace nanodi-express-test",
-    "test:dist": "npm run test:dist -workspace nanodi-test -workspace nanodi-express-test",
-    "pack": "npm pack -w nanodi -w nanodi-express"
+    "test": "npm run test -workspace nanodi-test -workspace nanodi-express-test -workspace nanodi-koa-test",
+    "test:dist": "npm run test:dist -workspace nanodi-test -workspace nanodi-express-test -workspace nanodi-koa-test",
+    "pack": "npm pack -w nanodi -w nanodi-express -w nanodi-koa"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
