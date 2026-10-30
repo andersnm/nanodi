@@ -20,6 +20,7 @@ export class ServiceCollection {
     this.services.set(key, registration);
   }
 
+  /** Register a constant value shared by all scopes. Never disposed by the provider. */
   registerValue<T>(key: RegistrationKey<T>, value: T): void {
     this.register<T>(key, { lifetime: "value", useValue: value });
   }
@@ -34,6 +35,7 @@ export class ServiceCollection {
     this.register<T>(key, { lifetime, useFactory });
   }
 
+  /** Declare a value supplied per scope with ServiceProvider.setScopedValue(), e.g. the current request. */
   registerScopedValue<T>(key: RegistrationKey<T>): void {
     this.register(key, { lifetime: "scopedValue" });
   }
@@ -116,15 +118,18 @@ export class ServiceCollection {
     }
   }
 
+  /** Freeze the collection and return the root provider. */
   createProvider(): ServiceProvider {
     this.frozen = true;
     return new ServiceProvider(FRIEND, this);
   }
 
+  /** Get the registration for a key, or undefined if not registered. */
   get<T>(key: RegistrationKey<T>): Registration<T> | undefined {
     return this.services.get(key);
   }
 
+  /** Get the class registrations whose class has the given decorator metadata key. */
   getByMetadata(metadataKey: string | symbol): RegistrationClass<any>[] {
     const registrations: RegistrationClass<any>[] = [];
     for (const registration of this.services.values()) {

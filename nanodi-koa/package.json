@@ -1,6 +1,15 @@
 {
   "name": "@nanodi/koa",
-  "version": "0.5.1",
+  "version": "0.6.0",
+  "description": "Koa controllers with request-scoped dependency injection using @nanodi/core.",
+  "keywords": [
+    "dependency-injection",
+    "express-middleware",
+    "ioc",
+    "ioc-container",
+    "koa-middleware",
+    "typescript"
+  ],
   "private": false,
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -33,7 +42,7 @@
     "koa": "^3.0.0"
   },
   "dependencies": {
-    "@nanodi/core": "^0.5.1"
+    "@nanodi/core": "^0.6.0"
   },
   "peerDependencies": {
     "@koa/router": "^15.0.0",

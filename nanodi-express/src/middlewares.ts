@@ -31,7 +31,7 @@ export function requestScopeMiddleware(provider: ServiceProvider, options?: Requ
   }
 }
 
-/** app.use() this to run controllers as middleware on every request */
+/** app.use() this to run a controller as middleware on every request. Holds req.scope until handle() settles. */
 export function requestHandlerMiddleware(key: RegistrationKey<Controller>): express.RequestHandler {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
@@ -49,7 +49,7 @@ export function requestHandlerMiddleware(key: RegistrationKey<Controller>): expr
   };
 }
 
-// app.use() this for each route
+/** app.use() this for each route. Returns a router running the middlewares, then the controller. */
 export function requestHandler(method: "get" | "post" | "put" | "delete", path: string, middlewares: express.RequestHandler[], key: RegistrationKey<Controller>): express.Router {
   const router = express.Router();
   router[method](path, ...middlewares, requestHandlerMiddleware(key));

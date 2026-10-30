@@ -27,6 +27,7 @@ export class ServiceProvider implements AsyncDisposable {
     this.disposer = new ServiceDisposer(parentProvider?.disposer);
   }
 
+  /** Set the value for a key registered with registerScopedValue() in this scope. Throws in the root provider and if already set. */
   setScopedValue<T>(key: RegistrationKey<T>, value: T): void {
     if (this.disposer.state === "disposed") {
       throw new Error("Cannot use a disposed provider");
@@ -52,6 +53,7 @@ export class ServiceProvider implements AsyncDisposable {
     this.instances.set(key, value);
   }
 
+  /** Return the instance for the key, creating and caching it according to its lifetime. */
   resolve<T>(key: RegistrationKey<T>): T {
     if (this.disposer.state === "disposed") {
       throw new Error("Cannot use a disposed provider");
@@ -158,6 +160,7 @@ export class ServiceProvider implements AsyncDisposable {
     }
   }
 
+  /** Create a child provider with its own cache of scoped instances. Must be disposed, or disposing this provider never completes. */
   createScope(): ServiceProvider {
     if (this.disposer.state !== "active") {
       throw new Error("Cannot create scope from a disposing or disposed provider");

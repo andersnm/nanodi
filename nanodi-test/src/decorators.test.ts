@@ -140,3 +140,15 @@ test("autobindInjectables throws when a class is listed twice", () => {
 
   assert.throws(() => autobindInjectables(collection, [A, A]), /Service already registered for key/);
 });
+
+test("autobindInjectables throws a clear error for a class without @injectable", () => {
+  abstract class Base {}
+
+  // Has decorator metadata, but not from @injectable()
+  @injectable.key(Base)
+  class A extends Base {}
+
+  const collection = new ServiceCollection();
+
+  assert.throws(() => autobindInjectables(collection, [A]), /No @injectable metadata found for class: A/);
+});

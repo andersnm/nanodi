@@ -14,6 +14,7 @@ function setMetadata<T extends new (...args: any[]) => any>(value: T, context: C
   }
 }
 
+/** `@controller(method, path)` routes requests to the class' handle(). Use with autobindControllers() or autobindInjectableControllers(). */
 export function controllerDecorator<T extends RegistrationConstructor<Controller>>(
   method: "get" | "post" | "put" | "delete",
   path: string
@@ -23,6 +24,7 @@ export function controllerDecorator<T extends RegistrationConstructor<Controller
   };
 }
 
+/** `@controller.middleware(...middlewares)` runs the middlewares before the controller on its route. */
 export function middlewareDecorator<T extends RegistrationConstructor<Controller>>(...middlewares: express.RequestHandler[]) {
   return function (value: T, context: ClassDecoratorContext) {
     setMetadata(value, context, "nanodi:controller-middlewares", middlewares);
@@ -33,32 +35,28 @@ export const controller = Object.assign(controllerDecorator, {
   middleware: middlewareDecorator,
 });
 
+function bindController(app: express.Application, controllerClass: RegistrationConstructor<Controller>) {
+  const metadata = controllerClass[Symbol.metadata];
+  const route = metadata?.["nanodi:controller"] as { method: "get" | "post" | "put" | "delete"; path: string } | undefined;
+  if (!route) {
+    throw new Error(`No @controller metadata found for class: ${controllerClass.name}`);
+  }
+
+  const middlewares = metadata!["nanodi:controller-middlewares"] as express.RequestHandler[] ?? [];
+  const controllerKey = getInjectableClassKey(controllerClass);
+  app.use(requestHandler(route.method, route.path, middlewares, controllerKey));
+}
+
+/** Adds a route for each class decorated with @controller(). The classes must be registered in the provider. */
 export function autobindControllers(app: express.Application, controllerClasses: RegistrationConstructor<Controller>[]) {
   for (const controllerClass of controllerClasses) {
-    const metadata = controllerClass[Symbol.metadata];
-    if (!metadata) {
-      throw new Error(`No @controller metadata found for class: ${controllerClass.name}`);
-    }
-
-    const { method, path } = metadata["nanodi:controller"] as { method: "get" | "post" | "put" | "delete"; path: string };
-    const middlewares = metadata["nanodi:controller-middlewares"] as express.RequestHandler[] ?? [];
-    const controllerKey = getInjectableClassKey(controllerClass);
-    app.use(requestHandler(method, path, middlewares, controllerKey));
+    bindController(app, controllerClass);
   }
 }
 
+/** Adds a route for each class in the collection decorated with @controller(). */
 export function autobindInjectableControllers(app: express.Application, services: ServiceCollection) {
-  const registrations = services.getByMetadata("nanodi:controller");
-
-  for (const registration of registrations) {
-    const metadata = registration.useClass[Symbol.metadata];
-    if (!metadata) {
-      throw new Error(`No @controller metadata found for class: ${registration.useClass.name}`);
-    }
-
-    const { method, path } = metadata["nanodi:controller"] as { method: "get" | "post" | "put" | "delete"; path: string };
-    const middlewares = metadata["nanodi:controller-middlewares"] as express.RequestHandler[] ?? [];
-    const controllerKey = getInjectableClassKey(registration.useClass);
-    app.use(requestHandler(method, path, middlewares, controllerKey));
+  for (const registration of services.getByMetadata("nanodi:controller")) {
+    bindController(app, registration.useClass);
   }
 }

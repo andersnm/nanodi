@@ -47,6 +47,7 @@ export type Registration<T> =
   | RegistrationClass<T>
   | RegistrationFactory<T>;
 
+/** Creates a symbol key typed with the instance type T, for type-checked registration and resolve(). */
 export function registrationSymbol<T = any>(name: string): RegistrationSymbol<T> {
   return Symbol(name) as RegistrationSymbol<T>;
 }

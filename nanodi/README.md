@@ -50,12 +50,12 @@ class UserService {
 
 ```ts
 app.get('/user', async (req, res) => {
-    const scope = root.createScope();
+    await using scope = root.createScope();
     scope.setScopedValue(RequestKey, req);
 
     try {
         const service = scope.resolve(UserService);
-        const user = await service.getUser(req.query.id);
+        const user = await service.getUser(Number(req.query.id));
 
         res.json(user);
     } catch (err) {
